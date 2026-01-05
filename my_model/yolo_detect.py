@@ -96,7 +96,8 @@ def main():
     img_count = 0
 
 
-    spoken_objects = set() #tracking detected objects for speech output
+    #tracking last speak time rather than tracking detected objects.
+    last_speak_time = time.time()
 
 
     while True:
@@ -140,11 +141,13 @@ def main():
             obj_count += 1
 
             # Announce detected object
-            for det in detections:
-                classname = labels[int(det.cls.item())]
-                if classname not in spoken_objects:
+            if time.time() - last_speak_time > 3:  #for evey 3 seconds
+                for det in detections:
+                    classname = labels[int(det.cls.item())]
                     speak(f"Detected {classname}")
-                    spoken_objects.add(classname)
+                last_speak_time = time.time()
+
+
 
         # Draw FPS and object count
         if source_type in ['video','usb']:
