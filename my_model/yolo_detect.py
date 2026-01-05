@@ -3,10 +3,23 @@ import sys
 import argparse
 import glob
 import time
+import pyttsx3
 
 import cv2
 import numpy as np
 from ultralytics import YOLO
+
+
+# text to speech engine initialization
+engine = pyttsx3.init()
+last_message = None
+
+def speak(text):
+    global last_message
+    if text != last_message:
+        engine.say(text)
+        engine.runAndWait()
+        last_message = text
 
 def main():
     parser = argparse.ArgumentParser(description="YOLOv8 Detection")
@@ -121,6 +134,9 @@ def main():
             label = f'{classname}: {conf:.2f}'
             cv2.putText(frame, label, (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 1)
             obj_count += 1
+
+            # Announce detected object
+            speak(f"Detected {classname}")
 
         # Draw FPS and object count
         if source_type in ['video','usb']:
