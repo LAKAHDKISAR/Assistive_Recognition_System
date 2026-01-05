@@ -12,14 +12,12 @@ from ultralytics import YOLO
 
 # text to speech engine initialization
 engine = pyttsx3.init()
-last_message = None
-
+spoken_objects_global = set() 
+last_speak_time = 0 
 def speak(text):
-    global last_message
-    if text != last_message:
-        engine.say(text)
-        engine.runAndWait()
-        last_message = text
+    engine.say(text)
+    engine.runAndWait()
+
 
 def main():
     parser = argparse.ArgumentParser(description="YOLOv8 Detection")
@@ -96,9 +94,7 @@ def main():
     img_count = 0
 
 
-    #tracking last speak time rather than tracking detected objects.
-    last_speak_time = time.time()
-
+    global last_speak_time, spoken_objects_global
 
     while True:
         t_start = time.perf_counter()
@@ -140,14 +136,22 @@ def main():
             cv2.putText(frame, label, (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,0), 1)
             obj_count += 1
 
-            # Announce detected object
-            if time.time() - last_speak_time > 3:  #for evey 3 seconds
-                for det in detections:
-                    classname = labels[int(det.cls.item())]
+        # Announce detected object
+        current_frame_objects = set()
+        for det in detections:
+            classname = labels[int(det.cls.item())]
+            current_frame_objects.add(classname)
+
+        # Speak for new objects while limiting to at most oness per sec only.
+        if time.time() - last_speak_time > 1.0:
+            for classname in current_frame_objects:
+                if classname not in spoken_objects_global:
                     speak(f"Detected {classname}")
-                last_speak_time = time.time()
+                    spoken_objects_global.add(classname)
+            last_speak_time = time.time()
 
-
+        # Removeing the objects that leave the frame
+        spoken_objects_global = spoken_objects_global.intersection(current_frame_objects)
 
         # Draw FPS and object count
         if source_type in ['video','usb']:
