@@ -95,6 +95,10 @@ def main():
     fps_avg_len = 200
     img_count = 0
 
+
+    spoken_objects = set() #tracking detected objects for speech output
+
+
     while True:
         t_start = time.perf_counter()
 
@@ -136,7 +140,11 @@ def main():
             obj_count += 1
 
             # Announce detected object
-            speak(f"Detected {classname}")
+            for det in detections:
+                classname = labels[int(det.cls.item())]
+                if classname not in spoken_objects:
+                    speak(f"Detected {classname}")
+                    spoken_objects.add(classname)
 
         # Draw FPS and object count
         if source_type in ['video','usb']:
