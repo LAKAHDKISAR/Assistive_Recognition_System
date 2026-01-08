@@ -11,7 +11,7 @@ This project combines computer vision, OCR, and text-to-speech technology to cre
 
 - **Real-Time Detection** - Identifies medicines via webcam using custom-trained YOLOv8 model
 - **Audio Feedback** - Announces detected medicines with spatial positioning (left/center/right)
-- **Stable Detection** - Reduces false positives by requiring objects to remain visible for 1-2 seconds
+- **Stable Detection** - Reduces false positives by requiring objects to remain visible for 1 second
 - **Personalized Schedules** - Manages individual medicine routines with dosage and timing information
 - **OCR Verification** - Confirms medicine identity by reading labels when brought close to camera
 - **Smart Guidance** - Suggests appropriate medicines based on current time and user schedule
