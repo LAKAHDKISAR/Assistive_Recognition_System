@@ -205,7 +205,7 @@ def main():
         t_stop = time.perf_counter()
         fps_buffer.append(1/(t_stop-t_start))
         if len(fps_buffer) > fps_avg_len:
-            fps_buffer.pop(0)
+           fps_buffer.pop(0)
 
     # Cleanup
     if source_type in ['video','usb']:
