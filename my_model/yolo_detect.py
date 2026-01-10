@@ -15,7 +15,11 @@ engine = pyttsx3.init()
 spoken_objects_global = set() 
 last_speak_time = 0 
 detection_start_time = {}      # to track when each object first appeared
-CONFIRMATION_TIME = 1.0        # the confirmation time of object. 
+CONFIRMATION_TIME = 1.0   
+
+Frame_Guidance_Cooldown = 1.5   # second between guidance for same obj
+last_guidance_time = {}
+
 def speak(text):
     engine.say(text)
     engine.runAndWait()
@@ -180,7 +184,28 @@ def main():
 
                 # Speak object + position
                 speak(f"Detected {obj} on the {position}")
+
+
+                #requesting to bring closer or move away
+                frame_height, frame_width = frame.shape[:2]
+                bbox_area = (xmax - xmin) * (ymax - ymin)
+                frame_area = frame_width * frame_height
+                area_ratio = bbox_area / frame_area
+
+                now = time.time()
+                last_time = last_guidance_time.get(obj, 0)
+
+                if now - last_time > Frame_Guidance_Cooldown:
+                    if area_ratio < 0.20:
+                        speak("Move the medicine closer.")
+                    elif area_ratio > 0.55:
+                        speak("Move slightly away.")
+                    else:
+                        speak("Hold steady. Reading label.")
+                    last_guidance_time[obj] = now
+
                 spoken_objects_global.add(obj)
+                break  # Speak only one new object per frame
 
         # Removeing the objects that leave the frame
         spoken_objects_global = spoken_objects_global.intersection(current_frame_objects)

@@ -101,7 +101,7 @@ The following curves were analyzed to evaluate model performance:
 ## CLI Method To Run the model
 
 ```bash
-python my_model/yolo_detect.py --model my_model_v2/best.pt --source 0 --thresh 0.5 --resolution 640x480
+python my_model/yolo_detect.py --model my_model_v2/my_model_v2.pt --source 0 --thresh 0.5 --resolution 640x480
 ```
 
 ## How It Works
