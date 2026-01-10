@@ -87,17 +87,14 @@ def do_ocr_on_object(frame, bbox):
     xmin, ymin, xmax, ymax = bbox
     crop_img = frame[ymin:ymax, xmin:xmax]
     gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-    # Adaptive thresholding for better contrast
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    text = pytesseract.image_to_string(thresh)
+    text = pytesseract.image_to_string(gray)
     return text.strip()
 
 #doing ocr on cropped image
 
 def do_ocr_on_cropped_image(crop_img):
     gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    text = pytesseract.image_to_string(thresh)
+    text = pytesseract.image_to_string(gray) 
     return text.strip()
 
 def main():
