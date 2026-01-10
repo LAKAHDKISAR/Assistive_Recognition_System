@@ -354,8 +354,8 @@ def main():
                     bbox_area = (xmax - xmin) * (ymax - ymin)
                     frame_area = frame.shape[0] * frame.shape[1]
                     area_ratio = bbox_area / frame_area
-
-                    if area_ratio > 0.5:
+                    
+                    if area_ratio > 0.01:
                         text = do_ocr_on_object(frame, active_object_bbox)
                         if text:
                             speak(f"Reading text: {text}")
