@@ -9,6 +9,9 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
+import threading
+import speech_recognition as sr
+
 
 # text to speech engine initialization
 engine = pyttsx3.init()
@@ -27,10 +30,38 @@ current_state = STATE_SCAN
 
 COMMAND_TIMEOUT = 5.0
 
+#voice command variables
+voice_command = None
+voice_command_lock = threading.Lock()
+
+#speak engine
 def speak(text):
     engine.say(text)
     engine.runAndWait()
 
+# Voice command listener
+def listen_for_commands():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source)
+    print("Voice command listener started")
+
+    global voice_command, voice_command_lock
+
+    while True:
+        with mic as source:
+            print("Listening for voice commands...")
+            audio = recognizer.listen(source, phrase_time_limit=4)
+        try:
+            text = recognizer.recognize_google(audio).lower()
+            print(f"Voice heard: {text}")
+            with voice_command_lock:
+                voice_command = text
+        except sr.UnknownValueError:
+            print("Could not understand audio")
+        except sr.RequestError as e:
+            print(f"Recognition error; {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="YOLOv8 Detection")
@@ -107,7 +138,12 @@ def main():
     img_count = 0
 
 
-    global last_speak_time, spoken_objects_global, current_state, active_object, active_object_last_seen
+    global last_speak_time, spoken_objects_global, current_state, active_object, active_object_last_seen, voice_command, voice_command_lock
+
+    # Starting the voice command listener thread
+    listener_thread = threading.Thread(target=listen_for_commands, daemon=True)
+    listener_thread.start()
+
 
     while True:
         t_start = time.perf_counter()
@@ -252,6 +288,29 @@ def main():
             current_state = STATE_SCAN
             last_guidance_time.clear()
             speak("Returning to scan mode.")
+
+
+
+        # Checking if any voice command was received
+        with voice_command_lock:
+            cmd = voice_command
+            voice_command = None  # reseting after reading
+
+        if cmd:
+            if "guide" in cmd:
+                current_state = STATE_GUIDE
+                last_guidance_time.clear()
+                speak("Entering guide mode.")
+            elif "scan" in cmd:
+                current_state = STATE_SCAN
+                last_guidance_time.clear()
+                speak("Returning to scan mode.")
+            elif "choose" in cmd or "select" in cmd or "object" in cmd:
+                if current_frame_objects:
+                    active_object = sorted(current_frame_objects)[0]
+                    current_state = STATE_GUIDE
+                    last_guidance_time.clear()
+                    speak(f"Guiding {active_object}. Please bring it closer.")
 
 
         # Update FPS buffer
