@@ -17,6 +17,60 @@ import pytesseract
 import queue
 
 
+# For closed vocabulary command recognition. 
+CMD_SCAN   = "SCAN"
+CMD_GUIDE  = "GUIDE"
+CMD_SELECT = "SELECT"
+CMD_READ   = "READ"
+
+COMMAND_VOCAB = {
+    CMD_SCAN: [
+        "scan", "start scan", "scanning"
+    ],
+    CMD_GUIDE: [
+        "guide", "guidance"
+    ],
+    CMD_SELECT: [
+        "choose", "select", "object", "select object"
+    ],
+    CMD_READ: [
+        "read", "read text", "read it"
+    ]
+}
+
+COMMAND_COOLDOWN = 2.5  # seconds between commands
+last_command_time = 0
+
+#Command resolver
+def resolve_command(text):
+    """
+    Converts free-form speech text to a fixed command or None.
+    Only matches against defined vocabulary.
+    """
+    if not text:
+        return None
+
+    text = text.lower().strip()
+
+    for command, keywords in COMMAND_VOCAB.items():
+        for kw in keywords:
+            if kw in text:
+                return command
+
+    return None
+
+
+def command_allowed():
+    """
+    Enforces cooldown between commands to prevent rapid-fire execution.
+    """
+    global last_command_time
+    now = time.time()
+    if now - last_command_time < COMMAND_COOLDOWN:
+        return False
+    last_command_time = now
+    return True
+
 # text to speech engine initialization
 engine = pyttsx3.init()
 spoken_objects_global = set() 
@@ -31,17 +85,15 @@ STATE_SCAN = 0
 STATE_GUIDE = 1        
 current_state = STATE_SCAN
 
-
 COMMAND_TIMEOUT = 5.0
 
 #voice command variables
 voice_command = None
 voice_command_lock = threading.Lock()
 
-
 tts_queue = queue.Queue() #queue for text to speech cause multiple overlaping 
 
-#adding waiting tts worker
+# tts engine
 def tts_worker():
     while True:
         text = tts_queue.get()
@@ -59,7 +111,7 @@ tts_thread.start()
 def speak(text):
     tts_queue.put(text)
 
-# Voice command listener
+
 def listen_for_commands():
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
@@ -76,12 +128,21 @@ def listen_for_commands():
         try:
             text = recognizer.recognize_google(audio).lower()
             print(f"Voice heard: {text}")
-            with voice_command_lock:
-                voice_command = text
+            
+            # Resolve to command using closed vocabulary
+            cmd = resolve_command(text)
+            if cmd:
+                print(f"Command resolved: {cmd}")
+                with voice_command_lock:
+                    voice_command = cmd
+            else:
+                print("No matching command found - ignored")
+                
         except sr.UnknownValueError:
             print("Could not understand audio")
         except sr.RequestError as e:
             print(f"Recognition error; {e}")
+
 
 def do_ocr_on_object(frame, bbox):
     xmin, ymin, xmax, ymax = bbox
@@ -89,8 +150,6 @@ def do_ocr_on_object(frame, bbox):
     gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
     text = pytesseract.image_to_string(gray)
     return text.strip()
-
-#doing ocr on cropped image
 
 def do_ocr_on_cropped_image(crop_img):
     gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
@@ -171,8 +230,7 @@ def main():
     fps_avg_len = 200
     img_count = 0
 
-
-    global last_speak_time, spoken_objects_global, current_state, active_object, active_object_last_seen, voice_command, voice_command_lock
+    global last_speak_time, spoken_objects_global, current_state, voice_command, voice_command_lock
 
     # Starting the voice command listener thread
     listener_thread = threading.Thread(target=listen_for_commands, daemon=True)
@@ -180,7 +238,6 @@ def main():
 
     active_object = None
     active_object_bbox = None
-
 
     while True:
         t_start = time.perf_counter()
@@ -303,7 +360,6 @@ def main():
             cv2.putText(frame, f'FPS: {avg_fps:.2f}', (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
         cv2.putText(frame, f'Objects: {obj_count}', (10,40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
 
-
         state_text = "STATE: SCAN" if current_state == STATE_SCAN else "STATE: GUIDE"
         state_color = (0, 255, 0) if current_state == STATE_SCAN else (0, 0, 255)
         cv2.putText(frame, state_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, state_color, 2)
@@ -339,7 +395,7 @@ def main():
                 frame_area = frame.shape[0] * frame.shape[1]
                 area_ratio = bbox_area / frame_area
 
-                if area_ratio > 0.5:
+                if area_ratio > 0.01:
                     text = do_ocr_on_object(frame, active_object_bbox)
                     if text:
                         speak(f"Reading text: {text}")
@@ -350,49 +406,69 @@ def main():
             else:
                 speak("Please enter guide mode and select an object to read.")
 
-
-
-        # Checking if any voice command was received
+        #Determining commands
         with voice_command_lock:
             cmd = voice_command
-            voice_command = None  # reseting after reading
+            voice_command = None  # reset after reading
 
-        if cmd:
-            if "guide" in cmd:
+        if cmd and command_allowed():
+
+            if cmd == CMD_GUIDE:
                 current_state = STATE_GUIDE
                 last_guidance_time.clear()
-                speak("Entering guide mode.")
-            elif "scan" in cmd:
+                speak("Guide mode")
+
+            elif cmd == CMD_SCAN:
                 current_state = STATE_SCAN
                 last_guidance_time.clear()
-                speak("Returning to scan mode.")
-            elif "choose" in cmd or "select" in cmd or "object" in cmd:
-                if current_frame_objects:
-                    active_object = sorted(current_frame_objects)[0]
-                    current_state = STATE_GUIDE
-                    last_guidance_time.clear()
-                    speak(f"Guiding {active_object}. Please bring it closer.")
+                speak("Scan mode")
 
-                    active_object_bbox = None
-                    for det in detections:
-                        classname = labels[int(det.cls.item())]
-                        if classname == active_object:
-                            active_object_bbox = det.xyxy.cpu().numpy().squeeze().astype(int)
-                            break
-            elif "read" in cmd:
-                print("[DEBUG] Read command received")
-                if current_state == STATE_GUIDE and active_object and active_object_bbox is not None:
+            elif cmd == CMD_SELECT:
+                if detections and len(detections) > 0:
+                    # Select largest object by area
+                    active_object_det = max(
+                        detections,
+                        key=lambda d: (
+                            (d.xyxy[0][2] - d.xyxy[0][0]) *
+                            (d.xyxy[0][3] - d.xyxy[0][1])
+                        )
+                    )
+                    active_object_bbox = active_object_det.xyxy.cpu().numpy().squeeze().astype(int)
+                    active_object = labels[int(active_object_det.cls.item())]
+
+                    current_state = STATE_GUIDE
+                    speak(f"{active_object} selected")
+                else:
+                    speak("No objects detected")
+
+            elif cmd == CMD_READ:
+                print(f"READ command triggered")
+                print(f"current_state = {current_state} (STATE_GUIDE={STATE_GUIDE})")
+                print(f"ctive_object = {active_object}")
+                print(f"active_object_bbox = {active_object_bbox}")
+                
+                if current_state == STATE_GUIDE and active_object_bbox is not None:
+                    print(f"Performing OCR on bbox: {active_object_bbox}")
+                    
+                    # Saving cropped image for debugging casue OCR is still having issue. /////////
                     xmin, ymin, xmax, ymax = active_object_bbox
                     crop_img = frame[ymin:ymax, xmin:xmax]
-                    cv2.imwrite("crop_capture.png", crop_img)  # saveing the image to check if reading correctly or not
-                    text = do_ocr_on_cropped_image(crop_img)
+                    cv2.imwrite("crop_capture.png", crop_img)
+                    print(f"Saved crop_capture.png ({crop_img.shape})")
+                    
+                    text = do_ocr_on_object(frame, active_object_bbox)
+                    print(f"OCR result: '{text}'")
+                    print(f"OCR result length: {len(text) if text else 0}")
+                    
                     if text and text.strip():
                         speak(f"Reading text: {text}")
+                        print(f"Speaking: Reading text: {text}")
                     else:
-                        speak("No text detected.")
+                        speak("No text detected")
+                        print(f"Speaking: No text detected")
                 else:
-                    speak("Please enter guide mode and select an object to read.")
-
+                    speak("Select an object first")
+                    print(f"Speaking: Select an object first")
 
         # Update FPS buffer
         t_stop = time.perf_counter()
