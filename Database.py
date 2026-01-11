@@ -224,7 +224,9 @@ class MedicineDatabaseGUI:
         self.setup_list_tab()
 
         self.setup_edit_tab()
-    
+
+        self.setup_schedule_tab()
+        
     def setup_ui(self):
 
         # Main container
@@ -350,6 +352,78 @@ class MedicineDatabaseGUI:
         tk.Button(button_frame, text="Cancel", command=self.cancel_edit,bg="#9E9E9E", fg="white", font=("Arial", 10), width=15).pack(side=tk.LEFT, padx=5)
     
 
+    def setup_schedule_tab(self):
+        # Medicine selection
+        top_frame = tk.Frame(self.schedule_tab, padx=10, pady=10)
+        top_frame.pack(fill=tk.X)
+        
+        tk.Label(top_frame, text="Select Medicine:", font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=5)
+        self.schedule_medicine_var = tk.StringVar()
+        self.schedule_medicine_combo = ttk.Combobox(top_frame, textvariable=self.schedule_medicine_var, width=40, state='readonly')
+        self.schedule_medicine_combo.pack(side=tk.LEFT, padx=5)
+        self.schedule_medicine_combo.bind('<<ComboboxSelected>>', self.load_medicine_schedules)
+        
+        tk.Button(top_frame, text="Refresh List", command=self.refresh_schedule_medicines).pack(side=tk.LEFT, padx=5)
+        
+        # Schedule form frame
+        form_frame = tk.LabelFrame(self.schedule_tab, text="Add Intake Schedule", padx=10, pady=10)
+        form_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Time of day
+        tk.Label(form_frame, text="Time of Day:*").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.time_entry = tk.Entry(form_frame, width=20)
+        self.time_entry.grid(row=0, column=1, pady=5, sticky=tk.W, padx=5)
+        tk.Label(form_frame, text="Format: HH:MM (24-hour)", fg="gray").grid(row=0, column=2, sticky=tk.W)
+        
+        # Quick time buttons
+        time_button_frame = tk.Frame(form_frame)
+        time_button_frame.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=5)
+        tk.Button(time_button_frame, text="Morning (08:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "08:00")).pack(side=tk.LEFT, padx=2)
+        tk.Button(time_button_frame, text="Afternoon (14:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "14:00")).pack(side=tk.LEFT, padx=2)
+        tk.Button(time_button_frame, text="Evening (20:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "20:00")).pack(side=tk.LEFT, padx=2)
+        
+        # With food
+        tk.Label(form_frame, text="With Food:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.with_food_var = tk.StringVar(value="No preference")
+        with_food_combo = ttk.Combobox(form_frame, textvariable=self.with_food_var, width=18,values=["Before food", "After food", "With food", "No preference"])
+        with_food_combo.grid(row=2, column=1, pady=5, sticky=tk.W, padx=5)
+        
+        # Special instructions
+        tk.Label(form_frame, text="Special Instructions:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.special_instructions_entry = tk.Entry(form_frame, width=50)
+        self.special_instructions_entry.grid(row=3, column=1, columnspan=2, pady=5, sticky=tk.W, padx=5)
+        
+        tk.Button(form_frame, text="Add Schedule", command=self.add_intake_schedule,bg="#4CAF50", fg="white", font=("Arial", 10, "bold")).grid(row=4, column=1, pady=10, sticky=tk.W, padx=5)
+        
+        # Schedule list frame
+        list_frame = tk.LabelFrame(self.schedule_tab, text="Current Schedules", padx=10, pady=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Treeview for schedules
+        columns = ("ID", "Medicine", "Time", "With Food", "Instructions")
+        self.schedule_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
+        
+        self.schedule_tree.heading("ID", text="ID")
+        self.schedule_tree.heading("Medicine", text="Medicine")
+        self.schedule_tree.heading("Time", text="Time")
+        self.schedule_tree.heading("With Food", text="With Food")
+        self.schedule_tree.heading("Instructions", text="Special Instructions")
+        
+        self.schedule_tree.column("ID", width=50)
+        self.schedule_tree.column("Medicine", width=200)
+        self.schedule_tree.column("Time", width=100)
+        self.schedule_tree.column("With Food", width=120)
+        self.schedule_tree.column("Instructions", width=300)
+        
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.schedule_tree.yview)
+        self.schedule_tree.configure(yscroll=scrollbar.set)
+        
+        self.schedule_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Delete schedule button
+        tk.Button(list_frame, text="Delete Selected Schedule", command=self.delete_selected_schedule,bg="#f44336", fg="white").pack(pady=5)
+    
     #Buttons functionalities
 
     def clear_search(self):
@@ -512,6 +586,81 @@ class MedicineDatabaseGUI:
         self.clear_form()
         self.notebook.select(self.list_tab)
 
+
+    #---schedule tab
+
+    def refresh_schedule_medicines(self):
+        medicines = self.db.get_all_medicines()
+        medicine_list = [f"{med[0]} - {med[1]}" for med in medicines]
+        self.schedule_medicine_combo['values'] = medicine_list
+        self.load_all_schedules()
+
+    def load_medicine_schedules(self, event=None):
+        self.load_all_schedules()
+
+    def load_all_schedules(self):
+        for item in self.schedule_tree.get_children():
+            self.schedule_tree.delete(item)
+        
+        medicines = self.db.get_all_medicines()
+        for med in medicines:
+            schedules = self.db.get_schedules_for_medicine(med[0])
+            for schedule in schedules:
+                self.schedule_tree.insert('', tk.END, values=(
+                    schedule[0],  # ID
+                    med[1],  # Medicine name
+                    schedule[2], # Time of medicine
+                    schedule[3],  # With food
+                    schedule[4]   # Instructions 
+                ))
+    
+    def add_intake_schedule(self):
+        selected = self.schedule_medicine_var.get()
+        if not selected:
+            messagebox.showwarning("No Medicine", "Please select a medicine first")
+            return
+        
+        medicine_id = int(selected.split(' - ')[0])
+        time_of_day = self.time_entry.get().strip()
+        
+        if not time_of_day:
+            messagebox.showerror("Validation Error", "Time is required!")
+            return
+        
+        # Validate time format
+        try:
+            datetime.strptime(time_of_day, "%H:%M")
+        except ValueError:
+            messagebox.showerror("Invalid Time", "Please use HH:MM format (24-hour)")
+            return
+        
+        with_food = self.with_food_var.get()
+        instructions = self.special_instructions_entry.get().strip()
+        
+        self.db.add_schedule(medicine_id, time_of_day, with_food, instructions)
+        messagebox.showinfo("Success", f"Schedule added for {time_of_day}")
+        
+        # Clear form
+        self.time_entry.delete(0, tk.END)
+        self.special_instructions_entry.delete(0, tk.END)
+        
+        self.load_all_schedules()
+        self.status_bar.config(text="Schedule added successfully")
+
+    def delete_selected_schedule(self):
+        selection = self.schedule_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a schedule to delete")
+            return
+        
+        item = self.schedule_tree.item(selection[0])
+        schedule_id = item['values'][0]
+        
+        confirm = messagebox.askyesno("Confirm Delete", "Delete this schedule?")
+        if confirm:
+            self.db.delete_schedule(schedule_id)
+            self.load_all_schedules()
+            self.status_bar.config(text="Schedule deleted")
 
 if __name__ == "__main__":
     root = tk.Tk()
