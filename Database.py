@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 
 class MedicineDatabase:
@@ -321,6 +321,24 @@ class MedicineDatabaseGUI:
             self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
         
         self.status_bar.config(text=f"Found {len(medicines)} matching medicines")
+
+    # Deleting
+    def delete_selected_medicine(self):
+        selection = self.medicine_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a medicine to delete")
+            return
+        
+        item = self.medicine_tree.item(selection[0])
+        medicine_id = item['values'][0]
+        medicine_name = item['values'][1]
+        
+        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{medicine_name}'?\n\nThis will also delete all associated schedules.")
+        
+        if confirm:
+            self.db.delete_medicine(medicine_id)
+            self.refresh_medicine_list()
+            self.status_bar.config(text=f"Deleted: {medicine_name}")
     
     def refresh_medicine_list(self):
         pass
@@ -329,9 +347,6 @@ class MedicineDatabaseGUI:
         pass
     
     def edit_selected_medicine(self):
-        pass
-    
-    def delete_selected_medicine(self):
         pass
 
 
