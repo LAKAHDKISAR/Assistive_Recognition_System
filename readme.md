@@ -125,6 +125,14 @@ graph LR
 5. **Matching** - Cross-references with user's medicine database
 6. **Guidance** - Suggests appropriate medicine based on schedule
 
+---
+
+## Technical Architecture
+
+![Technical Architecture](assets/Technical%20Architecture.png)
+
+---
+
 ## Use Cases
 
 - Daily medication management for visually impaired individuals
