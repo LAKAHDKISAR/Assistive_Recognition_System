@@ -133,6 +133,22 @@ graph LR
 
 ---
 
+## OCR
+
+### Advanced OCR Pipeline
+
+A 5-layer preprocessing pipeline ensures robust label recognition:
+
+1. **Grayscale Conversion:** Converts cropped regions of interest to grayscale for uniform processing.
+2. **Adaptive Thresholding:** Enhances contrast for variable lighting conditions.
+3. **Otsu Denoising:** Removes noise and small artifacts for clearer text extraction.
+4. **Contrast Enhancement:** Improves readability of low-contrast labels.
+5. **Inverted Image OCR:** Handles reversed or colored text on labels.
+
+- **Fallbacks:** If one preprocessing layer fails to produce readable text, the system automatically selects the best result from other layers.
+
+---
+
 ## Use Cases
 
 - Daily medication management for visually impaired individuals
