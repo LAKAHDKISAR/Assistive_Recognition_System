@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, scrolledtext
 
 
 class MedicineDatabase:
@@ -296,6 +296,55 @@ class MedicineDatabaseGUI:
         self.details_text = scrolledtext.ScrolledText(details_frame, height=8, wrap=tk.WORD)
         self.details_text.pack(fill=tk.BOTH, expand=True)
 
+
+    def setup_edit_tab(self):
+        # Form frame
+        form_frame = tk.Frame(self.edit_tab, padx=20, pady=20)
+        form_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Medicine Name
+        tk.Label(form_frame, text="Medicine Name:*", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.name_entry = tk.Entry(form_frame, width=50)
+        self.name_entry.grid(row=0, column=1, pady=5, sticky=tk.W)
+        
+        # Dosage
+        tk.Label(form_frame, text="Dosage:", font=("Arial", 10)).grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.dosage_entry = tk.Entry(form_frame, width=50)
+        self.dosage_entry.grid(row=1, column=1, pady=5, sticky=tk.W)
+        tk.Label(form_frame, text="e.g., 500mg, 10ml", fg="gray").grid(row=1, column=2, sticky=tk.W, padx=5)
+        
+        # Form for tablet, capsule, all that stuff
+        tk.Label(form_frame, text="Form:", font=("Arial", 10)).grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.form_var = tk.StringVar()
+        form_combo = ttk.Combobox(form_frame, textvariable=self.form_var, width=47,values=["Tablet", "Capsule", "Syrup", "Injection", "Drops", "Cream", "Inhaler", "Other"])
+        form_combo.grid(row=2, column=1, pady=5, sticky=tk.W)
+        
+        # Frequency
+        tk.Label(form_frame, text="Frequency:", font=("Arial", 10)).grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.frequency_entry = tk.Entry(form_frame, width=50)
+        self.frequency_entry.grid(row=3, column=1, pady=5, sticky=tk.W)
+        tk.Label(form_frame, text="e.g., Once daily, Twice daily, As needed", fg="gray").grid(row=3, column=2, sticky=tk.W, padx=5)
+        
+        # Active Ingredients
+        tk.Label(form_frame, text="Active Ingredients:", font=("Arial", 10)).grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.ingredients_entry = tk.Entry(form_frame, width=50)
+        self.ingredients_entry.grid(row=4, column=1, pady=5, sticky=tk.W)
+        tk.Label(form_frame, text="For matching OCR text", fg="gray").grid(row=4, column=2, sticky=tk.W, padx=5)
+        
+        # Notes
+        tk.Label(form_frame, text="Notes:", font=("Arial", 10)).grid(row=5, column=0, sticky=tk.W, pady=5)
+        self.notes_text = scrolledtext.ScrolledText(form_frame, width=38, height=5)
+        self.notes_text.grid(row=5, column=1, pady=5, sticky=tk.W)
+        
+        # Buttons
+        button_frame = tk.Frame(form_frame)
+        button_frame.grid(row=6, column=0, columnspan=3, pady=20)
+        
+        tk.Button(button_frame, text="Save Medicine", command=self.save_medicine,bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), width=15).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Clear Form", command=self.clear_form,bg="#FF9800", fg="white", font=("Arial", 10), width=15).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Cancel", command=self.cancel_edit,bg="#9E9E9E", fg="white", font=("Arial", 10), width=15).pack(side=tk.LEFT, padx=5)
+    
+
     #Buttons functionalities
 
     def clear_search(self):
@@ -380,9 +429,83 @@ class MedicineDatabaseGUI:
             self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
         
         self.status_bar.config(text=f"Loaded {len(medicines)} medicines")
-    
+
+    # -- saving medicine
+    def save_medicine(self):
+        name = self.name_entry.get().strip()
+        
+        if not name:
+            messagebox.showerror("Validation Error", "Medicine name is required!")
+            return
+        
+        dosage = self.dosage_entry.get().strip()
+        form = self.form_var.get()
+        frequency = self.frequency_entry.get().strip()
+        ingredients = self.ingredients_entry.get().strip()
+        notes = self.notes_text.get('1.0', tk.END).strip()
+        
+        if self.current_medicine_id:
+            # Update existing medicine
+            self.db.update_medicine(self.current_medicine_id, name, dosage, form, frequency, notes, ingredients)
+            messagebox.showinfo("Success", f"Medicine '{name}' updated successfully!")
+            self.status_bar.config(text=f"Updated: {name}")
+        else:
+            # Add new medicine
+            medicine_id = self.db.add_medicine(name, dosage, form, frequency, notes, ingredients)
+            messagebox.showinfo("Success", f"Medicine '{name}' added successfully!\nID: {medicine_id}")
+            self.status_bar.config(text=f"Added: {name}")
+        
+        self.clear_form()
+        self.refresh_medicine_list()
+        self.notebook.select(self.list_tab)
+
+
+    #editing selected medicine
     def edit_selected_medicine(self):
-        pass
+        selection = self.medicine_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a medicine to edit")
+            return
+        
+        item = self.medicine_tree.item(selection[0])
+        medicine_id = item['values'][0]
+        
+        medicine = self.db.get_medicine_by_id(medicine_id)
+        
+        self.current_medicine_id = medicine_id
+        self.name_entry.delete(0, tk.END)
+        self.name_entry.insert(0, medicine[1])
+        
+        self.dosage_entry.delete(0, tk.END)
+        self.dosage_entry.insert(0, medicine[2])
+        
+        self.form_var.set(medicine[3])
+        
+        self.frequency_entry.delete(0, tk.END)
+        self.frequency_entry.insert(0, medicine[4])
+        
+        self.ingredients_entry.delete(0, tk.END)
+        self.ingredients_entry.insert(0, medicine[6])
+        
+        self.notes_text.delete('1.0', tk.END)
+        self.notes_text.insert('1.0', medicine[5])
+        
+        self.notebook.select(self.edit_tab)
+        self.status_bar.config(text=f"Editing: {medicine[1]}")
+
+    def clear_form(self):
+        self.current_medicine_id = None
+        self.name_entry.delete(0, tk.END)
+        self.dosage_entry.delete(0, tk.END)
+        self.form_var.set('')
+        self.frequency_entry.delete(0, tk.END)
+        self.ingredients_entry.delete(0, tk.END)
+        self.notes_text.delete('1.0', tk.END)
+        self.status_bar.config(text="Form cleared")
+
+    def cancel_edit(self):
+        self.clear_form()
+        self.notebook.select(self.list_tab)
 
 
 if __name__ == "__main__":
