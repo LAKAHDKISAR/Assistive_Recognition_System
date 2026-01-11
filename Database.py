@@ -302,16 +302,29 @@ class MedicineDatabaseGUI:
         self.search_entry.delete(0, tk.END)
         self.refresh_medicine_list()
 
+    def on_medicine_double_click(self, event):
+        self.view_medicine_details()
 
+    #searching medicine
+    def search_medicines(self):
+        search_term = self.search_entry.get()
+        
+        for item in self.medicine_tree.get_children():
+            self.medicine_tree.delete(item)
+        
+        if not search_term:
+            self.refresh_medicine_list()
+            return
+        
+        medicines = self.db.search_medicine_by_name(search_term)
+        for med in medicines:
+            self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
+        
+        self.status_bar.config(text=f"Found {len(medicines)} matching medicines")
+    
     def refresh_medicine_list(self):
         pass
-    
-    def search_medicines(self):
-        pass
-    
-    def on_medicine_double_click(self, event):
-        pass
-    
+
     def view_medicine_details(self):
         pass
     
