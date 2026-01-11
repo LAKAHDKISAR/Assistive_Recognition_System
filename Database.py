@@ -55,7 +55,6 @@ class MedicineDatabase:
 
 
     def add_medicine(self, name, dosage="", form="", frequency="", notes="", active_ingredients=""):
-        """Add a new medicine to the database"""
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
         
@@ -68,6 +67,16 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
         return medicine_id
+    
+
+    def delete_medicine(self, medicine_id):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM medicines WHERE id = ?', (medicine_id,))
+        conn.commit()
+        conn.close()
+
+
 
 if __name__ == "__main__":
     db = MedicineDatabase()
