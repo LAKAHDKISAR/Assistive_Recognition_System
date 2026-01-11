@@ -296,7 +296,7 @@ class MedicineDatabaseGUI:
         self.details_text = scrolledtext.ScrolledText(details_frame, height=8, wrap=tk.WORD)
         self.details_text.pack(fill=tk.BOTH, expand=True)
 
-    #Buttons functionalities will add how they work but for now just for asthetics and design confirmation
+    #Buttons functionalities
 
     def clear_search(self):
         self.search_entry.delete(0, tk.END)
@@ -322,7 +322,7 @@ class MedicineDatabaseGUI:
         
         self.status_bar.config(text=f"Found {len(medicines)} matching medicines")
 
-    # Deleting
+    # Deleting 
     def delete_selected_medicine(self):
         selection = self.medicine_tree.selection()
         if not selection:
@@ -339,12 +339,47 @@ class MedicineDatabaseGUI:
             self.db.delete_medicine(medicine_id)
             self.refresh_medicine_list()
             self.status_bar.config(text=f"Deleted: {medicine_name}")
+
+    #viewing details logic
+    def view_medicine_details(self):
+        selection = self.medicine_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a medicine to view details")
+            return
+        
+        item = self.medicine_tree.item(selection[0])
+        medicine_id = item['values'][0]
+        
+        medicine = self.db.get_medicine_by_id(medicine_id)
+        schedules = self.db.get_schedules_for_medicine(medicine_id)
+        
+        details = f"Medicine Details\n{'='*60}\n\n"
+        details += f"Name: {medicine[1]}\n"
+        details += f"Dosage: {medicine[2]}\n"
+        details += f"Form: {medicine[3]}\n"
+        details += f"Frequency: {medicine[4]}\n"
+        details += f"Active Ingredients: {medicine[6]}\n"
+        details += f"Notes: {medicine[5]}\n\n"
+        
+        details += f"Intake Schedule\n{'-'*60}\n"
+        if schedules:
+            for schedule in schedules:
+                details += f"• {schedule[2]} - {schedule[3]} - {schedule[4]}\n"
+        else:
+            details += "No schedules set\n"
+        
+        self.details_text.delete('1.0', tk.END)
+        self.details_text.insert('1.0', details)
     
     def refresh_medicine_list(self):
-        pass
-
-    def view_medicine_details(self):
-        pass
+        for item in self.medicine_tree.get_children():
+            self.medicine_tree.delete(item)
+        
+        medicines = self.db.get_all_medicines()
+        for med in medicines:
+            self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
+        
+        self.status_bar.config(text=f"Loaded {len(medicines)} medicines")
     
     def edit_selected_medicine(self):
         pass
