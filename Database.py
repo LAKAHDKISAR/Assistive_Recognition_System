@@ -102,6 +102,18 @@ class MedicineDatabase:
         
         conn.close()
         return medicine
+    
+    # taking all the medicine from the database
+    def get_all_medicines(self):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM medicines ORDER BY medicine_name')
+        medicines = cursor.fetchall()
+        
+        conn.close()
+        return medicines
+
 
 if __name__ == "__main__":
     db = MedicineDatabase()
