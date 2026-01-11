@@ -151,17 +151,27 @@ class MedicineDatabase:
         
         conn.close()
         return schedules
+    
+    #getting current schedule of medicines based on time
+    def get_current_schedule(self):
+        current_time = datetime.now().strftime("%H:%M")
+        
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT m.*, s.time_of_day, s.with_food, s.special_instructions
+            FROM medicines m
+            JOIN intake_schedule s ON m.id = s.medicine_id
+            ORDER BY s.time_of_day
+        ''')
+        
+        schedules = cursor.fetchall()
+        conn.close()
+        return schedules
 
 
 if __name__ == "__main__":
     db = MedicineDatabase()
     print("Database initialized successfully")
-
-        
-    db.add_schedule(1, "08:00", "After food", "Morning dose")
-
-    medicine_id = 1
-    schedules = db.get_schedules_for_medicine(medicine_id)
-    print(f"Schedules for medicine ID {medicine_id}: {schedules}")
-
 
