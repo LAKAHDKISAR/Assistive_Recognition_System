@@ -118,3 +118,6 @@ class MedicineDatabase:
 if __name__ == "__main__":
     db = MedicineDatabase()
     print("Database initialized successfully")
+
+    all_meds = db.get_all_medicines()
+    print(f"Total medicines in database: {len(all_meds)}")
