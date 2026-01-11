@@ -131,6 +131,17 @@ class MedicineDatabase:
         conn.close()
 
 
+    # removing the schedule for a medicine
+    def delete_schedule(self, schedule_id):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM intake_schedule WHERE id = ?', (schedule_id,))
+        
+        conn.commit()
+        conn.close()
+
+
 if __name__ == "__main__":
     db = MedicineDatabase()
     print("Database initialized successfully")
