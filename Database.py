@@ -147,5 +147,6 @@ if __name__ == "__main__":
     print("Database initialized successfully")
 
 
-    db.add_schedule(1, "08:00", "After food", "Morning dose")
-    print("Schedule added for medicine 1")
+    schedule_id = 1
+    db.delete_schedule(schedule_id)
+    print(f"Schedule deleted (id={schedule_id})")
