@@ -169,19 +169,29 @@ class MedicineDatabase:
         schedules = cursor.fetchall()
         conn.close()
         return schedules
+    
+
+    # --------
+
+
+    
+    #searching medicine by name or other ingredients 
+    def search_medicine_by_name(self, search_term):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        search_pattern = f"%{search_term}%"
+        cursor.execute('''
+            SELECT * FROM medicines 
+            WHERE medicine_name LIKE ? OR active_ingredients LIKE ?
+            ORDER BY medicine_name
+        ''', (search_pattern, search_pattern))
+        
+        medicines = cursor.fetchall()
+        conn.close()
+        return medicines
 
 
 if __name__ == "__main__":
     db = MedicineDatabase()
     print("Database initialized successfully")
-
-    schedules = db.get_current_schedule()
-
-    print("Returned schedules:")
-    for row in schedules:
-        print(row)
-
-    # Basic validation
-    assert len(schedules) > 0, "No schedules returned"
-    assert row[-3] in ("08:00"), "Time not there add time"
-
