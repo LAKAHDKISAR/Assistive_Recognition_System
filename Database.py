@@ -170,11 +170,22 @@ class MedicineDatabase:
         conn.close()
         return schedules
     
+    #function log to keep log about medicine intake
+    def log_intake(self, medicine_id, scheduled_time, status="Taken"):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO intake_history (medicine_id, scheduled_time, status)
+            VALUES (?, ?, ?)
+        ''', (medicine_id, scheduled_time, status))
+        
+        conn.commit()
+        conn.close()
+    
 
     # --------
 
-
-    
     #searching medicine by name or other ingredients 
     def search_medicine_by_name(self, search_term):
         conn = sqlite3.connect(self.db_name)
@@ -196,5 +207,5 @@ if __name__ == "__main__":
     db = MedicineDatabase()
     print("Database initialized successfully")
 
-    results = db.search_medicine_by_name("Aspirin")
-    print(f"Search results: {len(results)}")
+    db.log_intake(1, "08:00", "Taken")
+    print("Intake logged")
