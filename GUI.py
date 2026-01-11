@@ -11,7 +11,11 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 import threading
-import speech_recognition as sr
+try:
+    import speech_recognition as sr
+    VOICE_ENABLED = True
+except ImportError:
+    VOICE_ENABLED = False
 import pytesseract
 import queue
 
@@ -72,15 +76,18 @@ def tts_worker():
         engine.say(text)
         engine.runAndWait()
         tts_queue.task_done()
-#tts worker thresd
+
 tts_thread = threading.Thread(target=tts_worker, daemon=True)
 tts_thread.start()
 
 def speak(text):
     tts_queue.put(text)
 
-#command listerner
+# voice listener
 def listen_for_commands(app):
+    if not VOICE_ENABLED:
+        return
+    
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
     with mic as source:
@@ -120,9 +127,9 @@ def do_ocr_on_bbox(frame, bbox):
         text = pytesseract.image_to_string(gray, config='--psm 6')
     return text.strip()
 
-# gui 
+# gui
 class VisionAssistantGUI:
-    def __init__(self, root):
+    def __init__(self, root, default_model_path=None):
         self.root = root
         self.root.title("Vision Assistant System")
         self.root.geometry("1200x800")
@@ -132,6 +139,7 @@ class VisionAssistantGUI:
         self.capturing = False
         self.model = None
         self.labels = None
+        self.default_model_path = default_model_path
         self.cap = None
         self.current_state = STATE_SCAN
         self.active_object = None
@@ -174,7 +182,7 @@ class VisionAssistantGUI:
         
         #left panel stuff
         # Title
-        title_label = tk.Label(left_panel, text="Vision Assistant", font=("Arial", 16, "bold"), bg="#f0f0f0") 
+        title_label = tk.Label(left_panel, text="Vision Assistant", font=("Arial", 16, "bold"), bg="#f0f0f0")
         title_label.pack(pady=10)
         
         # Model Selection menu
@@ -197,9 +205,12 @@ class VisionAssistantGUI:
         mode_frame = tk.LabelFrame(left_panel, text="Operating Mode", bg="#f0f0f0")
         mode_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        self.scan_btn = tk.Button(mode_frame, text="SCAN Mode", command=self.set_scan_mode, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
+        self.scan_btn = tk.Button(mode_frame, text="SCAN Mode", command=self.set_scan_mode, 
+                                  bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
         self.scan_btn.pack(fill=tk.X, padx=5, pady=2)
-        self.guide_btn = tk.Button(mode_frame, text="GUIDE Mode", command=self.set_guide_mode, bg="#808080", fg="white", font=("Arial", 10, "bold"))
+        
+        self.guide_btn = tk.Button(mode_frame, text="GUIDE Mode", command=self.set_guide_mode, 
+                                   bg="#808080", fg="white", font=("Arial", 10, "bold"))
         self.guide_btn.pack(fill=tk.X, padx=5, pady=2)
         
         # Settings
@@ -207,7 +218,8 @@ class VisionAssistantGUI:
         settings_frame.pack(fill=tk.X, padx=10, pady=5)
         
         tk.Label(settings_frame, text="Confidence Threshold:", bg="#f0f0f0").pack(anchor=tk.W, padx=5)
-        self.conf_scale = tk.Scale(settings_frame, from_=0.1, to=1.0, resolution=0.05, orient=tk.HORIZONTAL, command=self.update_confidence)
+        self.conf_scale = tk.Scale(settings_frame, from_=0.1, to=1.0, resolution=0.05, 
+                                   orient=tk.HORIZONTAL, command=self.update_confidence)
         self.conf_scale.set(0.5)
         self.conf_scale.pack(fill=tk.X, padx=5, pady=2)
         
@@ -233,11 +245,12 @@ class VisionAssistantGUI:
         
         self.log_text = scrolledtext.ScrolledText(log_frame, height=5, wrap=tk.WORD)
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-    
-        # Rigth pannel stuff
+        
+        # Right pannel stuff
         # Video canvas
-        self.canvas = tk.Canvas(right_panel, bg="#000000")
+        self.canvas = tk.Canvas(right_panel, bg="#000000", width=640, height=480)
         self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.canvas.update()  # Force updateing to get actual size
         
         # OCR Results
         ocr_frame = tk.LabelFrame(right_panel, text="OCR Results", bg="#f0f0f0")
@@ -264,23 +277,34 @@ class VisionAssistantGUI:
         self.root.bind('<q>', lambda e: self.on_closing())
         
         # Starting voice listener
-        self.voice_thread = threading.Thread(target=listen_for_commands, args=(self,), daemon=True)
-        self.voice_thread.start()
+        if VOICE_ENABLED:
+            self.voice_thread = threading.Thread(target=listen_for_commands, args=(self,), daemon=True)
+            self.voice_thread.start()
+            self.log_command("Voice commands enabled")
+        else:
+            self.log_command("Voice commands disabled (install speech_recognition)")
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # Automatically loging the default model
+        if self.default_model_path:
+            self.load_model_from_path(self.default_model_path)
         
     def load_model(self):
         model_path = filedialog.askopenfilename(title="Select YOLO Model",filetypes=[("PyTorch Model", "*.pt"), ("All Files", "*.*")])
         if model_path:
-            try:
-                self.model = YOLO(model_path)
-                self.labels = self.model.names
-                self.model_label.config(text=os.path.basename(model_path), fg="green")
-                self.log_command(f"Model loaded: {os.path.basename(model_path)}")
-                speak("Model loaded successfully")
-            except Exception as e:
-                self.log_command(f"Error loading model: {e}")
-                speak("Error loading model")
+            self.load_model_from_path(model_path)
+    
+    def load_model_from_path(self, model_path):
+        try:
+            self.model = YOLO(model_path)
+            self.labels = self.model.names
+            self.model_label.config(text=os.path.basename(model_path), fg="green")
+            self.log_command(f"Model loaded: {os.path.basename(model_path)}")
+            speak("Model loaded successfully")
+        except Exception as e:
+            self.log_command(f"Error loading model: {e}")
+            speak("Error loading model")
     
     def start_webcam(self):
         if not self.model:
@@ -295,7 +319,8 @@ class VisionAssistantGUI:
         self.capturing = True
         self.log_command("Webcam started")
         speak("Webcam started")
-        self.process_video()
+        # Delaying to ensure that the canvas is ready
+        self.root.after(100, self.process_video)
     
     def load_video(self):
         if not self.model:
@@ -324,6 +349,7 @@ class VisionAssistantGUI:
         speak("Capture stopped")
     
     def set_scan_mode(self):
+        global last_guidance_time
         self.current_state = STATE_SCAN
         self.scan_btn.config(bg="#4CAF50")
         self.guide_btn.config(bg="#808080")
@@ -332,6 +358,7 @@ class VisionAssistantGUI:
         speak("Scan mode")
     
     def set_guide_mode(self):
+        global last_guidance_time
         self.current_state = STATE_GUIDE
         self.guide_btn.config(bg="#4CAF50")
         self.scan_btn.config(bg="#808080")
@@ -453,6 +480,8 @@ class VisionAssistantGUI:
             speak("Select an object first")
     
     def process_video(self):
+        global spoken_objects_global, detection_start_time, last_guidance_time
+        
         if not self.capturing or self.cap is None:
             return
         
@@ -621,8 +650,9 @@ class VisionAssistantGUI:
         self.root.destroy()
 
 def main():
+    DEFAULT_MODEL = "/Users/rasikdhakal/Desktop/Yolo/my_model_v2/my_model_v2.pt"
     root = tk.Tk()
-    app = VisionAssistantGUI(root)
+    app = VisionAssistantGUI(root, default_model_path=DEFAULT_MODEL)
     root.mainloop()
 
 if __name__ == "__main__":
