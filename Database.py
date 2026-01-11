@@ -215,10 +215,15 @@ class MedicineDatabaseGUI:
         self.root = root
         self.root.title("Medicine Database Manager")
         self.root.geometry("1000x700")
+
+        self.db = MedicineDatabase()
+        self.current_medicine_id = None
         
         self.setup_ui()
         
         self.setup_list_tab()
+
+        self.setup_edit_tab()
     
     def setup_ui(self):
 
