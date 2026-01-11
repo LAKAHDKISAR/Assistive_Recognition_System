@@ -297,13 +297,16 @@ class MedicineDatabaseGUI:
         self.details_text.pack(fill=tk.BOTH, expand=True)
 
     #Buttons functionalities will add how they work but for now just for asthetics and design confirmation
+
+    def clear_search(self):
+        self.search_entry.delete(0, tk.END)
+        self.refresh_medicine_list()
+
+
     def refresh_medicine_list(self):
         pass
     
     def search_medicines(self):
-        pass
-    
-    def clear_search(self):
         pass
     
     def on_medicine_double_click(self, event):
