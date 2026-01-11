@@ -116,16 +116,71 @@ def listen_for_commands(app):
 
 # ocr
 def do_ocr_on_bbox(frame, bbox):
-    xmin, ymin, xmax, ymax = bbox
-    crop_img = frame[ymin:ymax, xmin:xmax]
-    gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    gray = cv2.fastNlMeansDenoising(gray, h=10)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    text = pytesseract.image_to_string(thresh, config='--psm 6')
-    if not text.strip():
-        text = pytesseract.image_to_string(gray, config='--psm 6')
-    return text.strip()
+    try:
+        xmin, ymin, xmax, ymax = bbox
+        
+        # Ensure valid bbox
+        h, w = frame.shape[:2]
+        xmin = max(0, xmin)
+        ymin = max(0, ymin)
+        xmax = min(w, xmax)
+        ymax = min(h, ymax)
+        
+        if xmax <= xmin or ymax <= ymin:
+            return ""
+        
+        crop_img = frame[ymin:ymax, xmin:xmax]
+        
+        # Skiping if crop is too small
+        if crop_img.shape[0] < 20 or crop_img.shape[1] < 20:
+            return ""
+        
+        # Trying multiple preprocessing techniques
+        results = []
+        
+        # Method 1 the Direct grayscale one
+        gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        text = pytesseract.image_to_string(gray, config='--psm 6').strip()
+        if text:
+            results.append(text)
+        
+        # Method 2 the Adaptive threshold one
+        gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        text = pytesseract.image_to_string(thresh, config='--psm 6').strip()
+        if text:
+            results.append(text)
+        
+        # Method 3 Otsu threshold with denoising
+        gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.fastNlMeansDenoising(gray, h=10)
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        text = pytesseract.image_to_string(thresh, config='--psm 6').strip()
+        if text:
+            results.append(text)
+        
+        # Method 4 Enhanced contrast one
+        gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+        text = pytesseract.image_to_string(gray, config='--psm 11').strip()
+        if text:
+            results.append(text)
+        
+        # Method 5 Inverted for white text on dark background
+        gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        inverted = cv2.bitwise_not(gray)
+        text = pytesseract.image_to_string(inverted, config='--psm 6').strip()
+        if text:
+            results.append(text)
+        
+        # Return longest result
+        if results:
+            return max(results, key=len)
+        return ""
+        
+    except Exception as e:
+        print(f"OCR Error: {e}")
+        return ""
 
 # gui
 class VisionAssistantGUI:
@@ -228,7 +283,8 @@ class VisionAssistantGUI:
         actions_frame.pack(fill=tk.X, padx=10, pady=5)
         
         tk.Button(actions_frame, text="Select Object", command=self.select_object).pack(fill=tk.X, padx=5, pady=2)
-        tk.Button(actions_frame, text="Read Text", command=self.read_text).pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(actions_frame, text="Read Text (OCR)", command=self.read_text, bg="#4169E1", fg="white").pack(fill=tk.X, padx=5, pady=2)
+        tk.Button(actions_frame, text="Test OCR (Full Frame)", command=self.test_ocr_full_frame).pack(fill=tk.X, padx=5, pady=2)
         tk.Button(actions_frame, text="Capture Image", command=self.capture_image).pack(fill=tk.X, padx=5, pady=2)
         
         # Detected Objects List
@@ -383,6 +439,36 @@ class VisionAssistantGUI:
             self.log_command("Image saved as capture.png")
             speak("Image captured")
     
+    def test_ocr_full_frame(self):
+        """Test OCR on the entire current frame"""
+        if not hasattr(self, 'current_frame') or self.current_frame is None:
+            speak("No frame available")
+            self.log_command("No frame for OCR test")
+            return
+        
+        speak("Testing OCR on full frame")
+        self.log_command("Running OCR on full frame...")
+        
+        try:
+            # Convert to grayscale
+            gray = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2GRAY)
+            
+            # Try OCR
+            text = pytesseract.image_to_string(gray, config='--psm 3').strip()
+            
+            if text:
+                self.ocr_text.delete('1.0', tk.END)
+                self.ocr_text.insert('1.0', text)
+                self.log_command(f"OCR found: {text[:100]}...")
+                speak(f"Found text: {text[:50]}")
+            else:
+                self.log_command("No text found in full frame")
+                speak("No text detected")
+                
+        except Exception as e:
+            self.log_command(f"OCR test error: {e}")
+            speak("OCR test failed")
+    
     def on_object_select(self, event):
         selection = self.objects_listbox.curselection()
         if selection and hasattr(self, 'current_detections'):
@@ -438,16 +524,21 @@ class VisionAssistantGUI:
             frame_area = self.current_frame.shape[0] * self.current_frame.shape[1]
             area_ratio = bbox_area / frame_area
             
-            if area_ratio < 0.20:
-                speak("Please bring the object closer to read")
-            elif area_ratio > 0.55:
-                speak("Move the object slightly away")
+            self.log_command(f"Object area ratio: {area_ratio:.2f}")
+            
+            if area_ratio < 0.15:
+                speak("Please bring the object much closer to read")
+            elif area_ratio > 0.65:
+                speak("Move the object further away")
             else:
-                speak("Reading... Hold steady")
+                speak("Reading text now")
+                self.log_command("Starting OCR...")
                 
-                # Putting the same Multi-frame OCR for better results. as prev done in yolo_detect.
+                # Multi-frame OCR for better results
                 ocr_results = []
-                for attempt in range(5):
+                frames_to_process = 3  # Reduced from 5 for faster response
+                
+                for attempt in range(frames_to_process):
                     if self.cap and self.capturing:
                         ret, fresh_frame = self.cap.read()
                         if not ret:
@@ -460,24 +551,41 @@ class VisionAssistantGUI:
                             if self.labels[int(det.cls.item())] == self.active_object:
                                 fresh_bbox = det.xyxy.cpu().numpy().squeeze().astype(int)
                                 text = do_ocr_on_bbox(fresh_frame, fresh_bbox)
-                                if text and len(text) > 3:
+                                if text and len(text) > 2:
                                     ocr_results.append(text)
+                                    self.log_command(f"OCR attempt {attempt+1}: {text[:50]}...")
                                 break
                     else:
-                        text = do_ocr_on_bbox(self.current_frame, self.active_object_bbox)
-                        if text:
+                        text = do_ocr_on_bbox(self.current_frame, current_bbox)
+                        if text and len(text) > 2:
                             ocr_results.append(text)
+                            self.log_command(f"OCR result: {text[:50]}...")
                         break
                 
                 if ocr_results:
+                    # Getting the longest result
                     best_text = max(ocr_results, key=len)
                     self.ocr_text.delete('1.0', tk.END)
                     self.ocr_text.insert('1.0', best_text)
-                    speak(f"Reading text: {best_text}")
+                    
+                    # Speaks the first 100 characters
+                    speak_text = best_text[:100] if len(best_text) > 100 else best_text
+                    speak(f"Text reads: {speak_text}")
+                    self.log_command(f"Final OCR result: {best_text}")
                 else:
-                    speak("No text detected. Try holding the object steady")
+                    self.log_command("No text detected in any frame")
+                    speak("No readable text found. Try better lighting or hold object steady")
+                    
+                    # Saveing debug image
+                    try:
+                        debug_crop = self.current_frame[ymin:ymax, xmin:xmax]
+                        cv2.imwrite('ocr_debug.png', debug_crop)
+                        self.log_command("Saved debug crop to ocr_debug.png")
+                    except:
+                        pass
         else:
-            speak("Select an object first")
+            speak("Please select an object first in guide mode")
+            self.log_command("No object selected for OCR")
     
     def process_video(self):
         global spoken_objects_global, detection_start_time, last_guidance_time
