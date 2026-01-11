@@ -1,6 +1,10 @@
 import sqlite3
 from datetime import datetime
 
+import tkinter as tk
+from tkinter import ttk
+
+
 class MedicineDatabase:
     def __init__(self, db_name="medicine_db.sqlite"):
         self.db_name = db_name
@@ -201,11 +205,43 @@ class MedicineDatabase:
         medicines = cursor.fetchall()
         conn.close()
         return medicines
+    
+
+    # gui --------
+
+
+class MedicineDatabaseGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Medicine Database Manager")
+        self.root.geometry("1000x700")
+        
+        self.setup_ui()
+    
+    def setup_ui(self):
+        
+        # Main container
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Medicine List tab
+        self.list_tab = tk.Frame(self.notebook)
+        self.notebook.add(self.list_tab, text="Medicine List")
+        
+        # Adding or Editing the Medicine tab
+        self.edit_tab = tk.Frame(self.notebook)
+        self.notebook.add(self.edit_tab, text="Add or Edit Medicine")
+        
+        # Intake schedule managing tab
+        self.schedule_tab = tk.Frame(self.notebook)
+        self.notebook.add(self.schedule_tab, text="Intake Schedule")
+        
+        # The status bar
+        self.status_bar = tk.Label(self.root, text="Ready", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
 
 if __name__ == "__main__":
-    db = MedicineDatabase()
-    print("Database initialized successfully")
-
-    db.log_intake(1, "08:00", "Taken")
-    print("Intake logged")
+    root = tk.Tk()
+    app = MedicineDatabaseGUI(root)
+    root.mainloop()
