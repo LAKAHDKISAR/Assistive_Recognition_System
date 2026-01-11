@@ -226,7 +226,8 @@ class MedicineDatabaseGUI:
         self.setup_edit_tab()
 
         self.setup_schedule_tab()
-        
+        self.refresh_medicine_list()
+
     def setup_ui(self):
 
         # Main container
