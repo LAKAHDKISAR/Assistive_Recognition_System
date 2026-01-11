@@ -1,5 +1,5 @@
 # Model Configuration
-MODEL_PATH = "best.pt"  # Path to your YOLO model
+MODEL_PATH = "/Users/rasikdhakal/Desktop/Yolo/my_model_v2/my_model_v2.pt" 
 CONFIDENCE_THRESHOLD = 0.5
 
 # Camera Configuration
