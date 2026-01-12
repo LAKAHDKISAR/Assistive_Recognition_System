@@ -452,14 +452,14 @@ class VisionAssistantGUI:
         self.verify_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         
         # status bar
-        status_bar = tk.Frame(self.root, bg="#333333", height=30)
+        status_bar = ctk.CTkFrame(self.root, height=35, corner_radius=0)
         status_bar.pack(fill=tk.X, side=tk.BOTTOM)
-        
-        self.status_label = tk.Label(status_bar, text="Status: Ready", bg="#333333", fg="white", anchor=tk.W)
-        self.status_label.pack(side=tk.LEFT, padx=10)
-        
-        self.fps_label = tk.Label(status_bar, text="FPS: 0", bg="#333333", fg="white")
-        self.fps_label.pack(side=tk.RIGHT, padx=10)
+
+        self.status_label = ctk.CTkLabel(status_bar, text="Status: Ready",font=ctk.CTkFont(size=12),anchor=tk.W)
+        self.status_label.pack(side=tk.LEFT, padx=15)
+
+        self.fps_label = ctk.CTkLabel(status_bar, text="FPS: 0",font=ctk.CTkFont(size=12))
+        self.fps_label.pack(side=tk.RIGHT, padx=15)
         
         # Keyboard bindings
         self.root.bind('<g>', lambda e: self.set_guide_mode())
@@ -969,8 +969,8 @@ class VisionAssistantGUI:
             self.fps_buffer.pop(0)
         
         avg_fps = np.mean(self.fps_buffer) if self.fps_buffer else 0
-        self.fps_label.config(text=f"FPS: {avg_fps:.1f}")
-        self.status_label.config(text=f"Status: Capturing | Objects: {len(self.current_detections)}")
+        self.fps_label.configure(text=f"FPS: {avg_fps:.1f}")
+        self.status_label.configure(text=f"Status: Capturing | Objects: {len(self.current_detections)}")
         
         # Scheduling the next frame
         self.root.after(10, self.process_video)
