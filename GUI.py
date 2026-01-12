@@ -412,6 +412,7 @@ class VisionAssistantGUI:
         self.root.bind('<r>', lambda e: self.read_text())
         self.root.bind('<p>', lambda e: self.capture_image())
         self.root.bind('<q>', lambda e: self.on_closing())
+        self.root.bind('<v>', lambda e: self.verify_medicine())
         
         # Starting voice listener
         if VOICE_ENABLED:
