@@ -21,6 +21,8 @@ import queue
 
 import sqlite3
 from difflib import SequenceMatcher
+from datetime import datetime, timedelta
+from Database import MedicineDatabase
 
 CMD_SCAN = "SCAN"
 CMD_GUIDE = "GUIDE"
@@ -195,7 +197,7 @@ def do_ocr_on_bbox(frame, bbox):
 def calculate_similarity(text1, text2):
     return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
 
-# ----best matching medicine 
+# ----best matching medicine from dataset based on ocr results
 def find_best_medicine_match(ocr_text, medicines):
     best_match = None
     best_score = 0
@@ -233,6 +235,27 @@ def find_best_medicine_match(ocr_text, medicines):
     return None, 0
 
 
+# ------ verifying if the retrieved medicine time is right now or not
+def check_medicine_schedule(medicine_id, db, time_window_minutes=60):
+    current_time = datetime.now()
+    current_time_str = current_time.strftime("%H:%M")
+    
+    schedules = db.get_schedules_for_medicine(medicine_id)
+    
+    for schedule in schedules:
+        schedule_time_str = schedule[2]  # the current time of the day
+        schedule_time = datetime.strptime(schedule_time_str, "%H:%M").time()
+        
+        # Converting to datetime for comparison
+        schedule_datetime = datetime.combine(current_time.date(), schedule_time)
+        
+        # Checking if within time window
+        time_diff = abs((current_time - schedule_datetime).total_seconds() / 60)
+        
+        if time_diff <= time_window_minutes:
+            return True, schedule, time_diff
+    
+    return False, None, None
 
 # gui
 class VisionAssistantGUI:
@@ -272,6 +295,7 @@ class VisionAssistantGUI:
                            (98,118,150), (172,176,184)]
         
         self.setup_ui()
+        self.medicine_db = MedicineDatabase()
         
     def setup_ui(self):
         # Main container
