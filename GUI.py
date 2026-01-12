@@ -367,13 +367,18 @@ class VisionAssistantGUI:
         self.guide_btn.pack(fill=tk.X, padx=15, pady=(0, 15))
         
         # Settings
-        settings_frame = tk.LabelFrame(left_panel, text="Settings", bg="#f0f0f0")
-        settings_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        tk.Label(settings_frame, text="Confidence Threshold:", bg="#f0f0f0").pack(anchor=tk.W, padx=5)
-        self.conf_scale = tk.Scale(settings_frame, from_=0.1, to=1.0, resolution=0.05, orient=tk.HORIZONTAL, command=self.update_confidence)
+        settings_frame = ctk.CTkFrame(scrollable_frame, corner_radius=10)
+        settings_frame.pack(fill=tk.X, pady=(0, 15))
+
+        ctk.CTkLabel(settings_frame, text="Settings",font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 10), padx=15, anchor="w")
+        ctk.CTkLabel(settings_frame, text="Confidence Threshold:",font=ctk.CTkFont(size=12)).pack(anchor=tk.W, padx=15)
+
+        self.conf_scale = ctk.CTkSlider(settings_frame, from_=0.1, to=1.0,number_of_steps=18,command=self.update_confidence)
         self.conf_scale.set(0.5)
-        self.conf_scale.pack(fill=tk.X, padx=5, pady=2)
+        self.conf_scale.pack(fill=tk.X, padx=15, pady=(5, 10))
+
+        self.conf_value_label = ctk.CTkLabel(settings_frame, text="0.50",font=ctk.CTkFont(size=11),text_color=("gray60", "gray50"))
+        self.conf_value_label.pack(padx=15, pady=(0, 15))
         
         # Actions
         actions_frame = tk.LabelFrame(left_panel, text="Actions", bg="#f0f0f0")
