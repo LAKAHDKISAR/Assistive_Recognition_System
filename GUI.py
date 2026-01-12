@@ -23,12 +23,14 @@ CMD_SCAN = "SCAN"
 CMD_GUIDE = "GUIDE"
 CMD_SELECT = "SELECT"
 CMD_READ = "READ"
+CMD_VERIFY = "VERIFY"
 
 COMMAND_VOCAB = {
     CMD_SCAN: ["scan", "start scan", "scanning"],
     CMD_GUIDE: ["guide", "guidance"],
     CMD_SELECT: ["choose", "select", "object", "select object"],
-    CMD_READ: ["read", "read text", "read it"]
+    CMD_READ: ["read", "read text", "read it"],
+    CMD_VERIFY: ["verify", "check medicine", "verify medicine", "is this safe", "check"]
 }
 
 COMMAND_COOLDOWN = 2.5
