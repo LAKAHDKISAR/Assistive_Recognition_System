@@ -24,6 +24,12 @@ from difflib import SequenceMatcher
 from datetime import datetime, timedelta
 from Database import MedicineDatabase
 
+import customtkinter as ctk
+
+# setting custom tkinter themes
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
 CMD_SCAN = "SCAN"
 CMD_GUIDE = "GUIDE"
 CMD_SELECT = "SELECT"
@@ -933,7 +939,7 @@ class VisionAssistantGUI:
 
 def main():
     DEFAULT_MODEL = "/Users/rasikdhakal/Desktop/Yolo/my_model_v2/my_model_v2.pt"
-    root = tk.Tk()
+    root = ctk.CTk()
     app = VisionAssistantGUI(root, default_model_path=DEFAULT_MODEL)
     root.mainloop()
 
