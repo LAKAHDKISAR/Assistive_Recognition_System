@@ -19,6 +19,9 @@ except ImportError:
 import pytesseract
 import queue
 
+import sqlite3
+from difflib import SequenceMatcher
+
 CMD_SCAN = "SCAN"
 CMD_GUIDE = "GUIDE"
 CMD_SELECT = "SELECT"
@@ -183,6 +186,17 @@ def do_ocr_on_bbox(frame, bbox):
     except Exception as e:
         print(f"OCR Error: {e}")
         return ""
+    
+
+
+#--- database function for medicine verification
+
+#text similarity checking function
+def calculate_similarity(text1, text2):
+    return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
+
+
+
 
 # gui
 class VisionAssistantGUI:
