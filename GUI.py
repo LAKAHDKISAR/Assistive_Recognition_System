@@ -443,11 +443,13 @@ class VisionAssistantGUI:
         self.ocr_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         
         #Medicine Verification Result display
-        verify_frame = tk.LabelFrame(right_panel, text="Medicine Verification", bg="#f0f0f0")
-        verify_frame.pack(fill=tk.X, padx=5, pady=5)
-
-        self.verify_text = scrolledtext.ScrolledText(verify_frame, height=4, wrap=tk.WORD)
-        self.verify_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        verify_frame = ctk.CTkFrame(right_panel, corner_radius=10)
+        verify_frame.pack(fill=tk.X, padx=15, pady=(0, 15))
+        ctk.CTkLabel(verify_frame, text="Medicine Verification",font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 10), padx=15, anchor="w")
+        verify_container = ctk.CTkFrame(verify_frame, fg_color=("gray85", "gray20"))
+        verify_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        self.verify_text = tk.Text(verify_container, height=4, wrap=tk.WORD,bg=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"),fg=("#000000" if ctk.get_appearance_mode() == "Light" else "#FFFFFF"),relief=tk.FLAT,font=("Arial", 11),borderwidth=0,highlightthickness=0)
+        self.verify_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         
         # status bar
         status_bar = tk.Frame(self.root, bg="#333333", height=30)
