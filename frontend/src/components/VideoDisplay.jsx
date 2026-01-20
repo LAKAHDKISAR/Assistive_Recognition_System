@@ -13,12 +13,56 @@ const BBOX_COLORS = [
   "#ACB0B8",
 ];
 
+function drawDetections(ctx, detections) {
+  detections.forEach((det) => {
+    const [xmin, ymin, xmax, ymax] = det.bbox;
+    const color = BBOX_COLORS[det.class_id % BBOX_COLORS.length];
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
+
+    const label = `${det.class} ${det.confidence.toFixed(2)}`;
+    ctx.font = "14px Inter, Arial, sans-serif";
+
+    const padding = 6;
+    const textWidth = ctx.measureText(label).width;
+    const textHeight = 18;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(
+      xmin,
+      ymin - textHeight - padding,
+      textWidth + padding * 2,
+      textHeight + padding
+    );
+
+    ctx.fillStyle = "#fff";
+    ctx.fillText(label, xmin + padding, ymin - padding);
+  });
+}
+
+function drawActiveBox(ctx, bbox) {
+  const [xmin, ymin, xmax, ymax] = bbox;
+
+  ctx.strokeStyle = "#00FF00";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
+
+  ctx.fillStyle = "#00FF00";
+  ctx.fillRect(xmin, ymax + 6, 72, 22);
+
+  ctx.fillStyle = "#000";
+  ctx.font = "bold 13px Inter, Arial, sans-serif";
+  ctx.fillText("ACTIVE", xmin + 8, ymax + 22);
+}
+
 function VideoDisplay({ frameData }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
 
   useEffect(() => {
-    if (!frameData || !frameData.image) return;
+    if (!frameData?.image) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -27,53 +71,23 @@ function VideoDisplay({ frameData }) {
     img.src = `data:image/jpeg;base64,${frameData.image}`;
 
     img.onload = () => {
-      console.log("Image loaded:", img.width, img.height);
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const dpr = window.devicePixelRatio || 1;
 
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.width = img.width * dpr;
+      canvas.height = img.height * dpr;
+      canvas.style.width = `${img.width}px`;
+      canvas.style.height = `${img.height}px`;
 
-      if (frameData.detections && frameData.detections.length > 0) {
-        frameData.detections.forEach((detection) => {
-          const [xmin, ymin, xmax, ymax] = detection.bbox;
-          const color = BBOX_COLORS[detection.class_id % BBOX_COLORS.length];
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
 
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 3;
-          ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
-
-          const label = `${detection.class}: ${detection.confidence.toFixed(
-            2
-          )}`;
-          ctx.font = "16px Arial";
-          const textWidth = ctx.measureText(label).width;
-          const textHeight = 20;
-
-          ctx.fillStyle = color;
-          ctx.fillRect(
-            xmin,
-            ymin - textHeight - 5,
-            textWidth + 10,
-            textHeight + 5
-          );
-
-          ctx.fillStyle = "white";
-          ctx.fillText(label, xmin + 5, ymin - 8);
-        });
+      if (frameData.detections?.length) {
+        drawDetections(ctx, frameData.detections);
       }
 
-      if (frameData.active_bbox && frameData.mode === "GUIDE") {
-        const [xmin, ymin, xmax, ymax] = frameData.active_bbox;
-
-        ctx.strokeStyle = "#00FF00";
-        ctx.lineWidth = 5;
-        ctx.strokeRect(xmin - 2, ymin - 2, xmax - xmin + 4, ymax - ymin + 4);
-
-        ctx.fillStyle = "#00FF00";
-        ctx.fillRect(xmin, ymax + 5, 80, 25);
-        ctx.fillStyle = "black";
-        ctx.font = "bold 16px Arial";
-        ctx.fillText("ACTIVE", xmin + 5, ymax + 22);
+      if (frameData.mode === "GUIDE" && frameData.active_bbox) {
+        drawActiveBox(ctx, frameData.active_bbox);
       }
     };
   }, [frameData]);
@@ -81,17 +95,13 @@ function VideoDisplay({ frameData }) {
   return (
     <div className="video-container">
       <div className="video-wrapper">
-        <img
-          ref={imgRef}
-          className="video-frame"
-          alt="Video feed"
-          style={{ display: "none" }}
-        />
+        <img ref={imgRef} alt="" style={{ display: "none" }} />
         <canvas ref={canvasRef} className="video-canvas" />
       </div>
+
       {!frameData && (
         <div className="no-video-overlay">
-          <p>Waiting for video stream...</p>
+          <span>Waiting for video stream…</span>
         </div>
       )}
     </div>
