@@ -2,7 +2,8 @@ import sqlite3
 from datetime import datetime
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import messagebox
+import customtkinter as ctk
 
 
 class MedicineDatabase:
@@ -10,11 +11,10 @@ class MedicineDatabase:
         self.db_name = db_name
         self.init_database()
     
-    def init_database(self): #initializing the sqlite database with tables
+    def init_database(self):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
         
-        # Creating the medicines table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS medicines (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,8 +29,6 @@ class MedicineDatabase:
             )
         ''')
         
-        # Createing the intake schedule table  
-        #putting python string literals
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS intake_schedule (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +40,6 @@ class MedicineDatabase:
             )
         ''')
         
-        # Creating the intake history table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS intake_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,7 +68,7 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
         return medicine_id
-    
+
 
     def delete_medicine(self, medicine_id):
         conn = sqlite3.connect(self.db_name)
@@ -80,7 +77,7 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
 
-    # updating details of a medicine
+
     def update_medicine(self, medicine_id, name, dosage, form, frequency, notes, active_ingredients):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -95,8 +92,6 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
 
-
-    # taking the medicine with their id
     def get_medicine_by_id(self, medicine_id):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -107,7 +102,6 @@ class MedicineDatabase:
         conn.close()
         return medicine
     
-    # taking all the medicine from the database
     def get_all_medicines(self):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -117,11 +111,7 @@ class MedicineDatabase:
         
         conn.close()
         return medicines
-    
 
-    # ---- 
-    
-    # schedule for medicine intake
     def add_schedule(self, medicine_id, time_of_day, with_food="No preference", special_instructions=""):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -134,8 +124,6 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
 
-
-    # removing the schedule for a medicine
     def delete_schedule(self, schedule_id):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -145,7 +133,6 @@ class MedicineDatabase:
         conn.commit()
         conn.close()
 
-    # getting schedule for a medicine
     def get_schedules_for_medicine(self, medicine_id):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -156,7 +143,6 @@ class MedicineDatabase:
         conn.close()
         return schedules
     
-    #getting current schedule of medicines based on time
     def get_current_schedule(self):
         current_time = datetime.now().strftime("%H:%M")
         
@@ -174,7 +160,6 @@ class MedicineDatabase:
         conn.close()
         return schedules
     
-    #function log to keep log about medicine intake
     def log_intake(self, medicine_id, scheduled_time, status="Taken"):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -186,11 +171,7 @@ class MedicineDatabase:
         
         conn.commit()
         conn.close()
-    
 
-    # --------
-
-    #searching medicine by name or other ingredients 
     def search_medicine_by_name(self, search_term):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -205,82 +186,112 @@ class MedicineDatabase:
         medicines = cursor.fetchall()
         conn.close()
         return medicines
-    
 
-    # gui --------
+
+# Set CustomTkinter theme
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
 
 class MedicineDatabaseGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Medicine Database Manager")
-        self.root.geometry("1000x700")
+        self.root.geometry("1200x800")
 
         self.db = MedicineDatabase()
         self.current_medicine_id = None
         
         self.setup_ui()
-        
         self.setup_list_tab()
-
         self.setup_edit_tab()
-
         self.setup_schedule_tab()
         self.refresh_medicine_list()
 
     def setup_ui(self):
-
         # Main container
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        main_container = ctk.CTkFrame(self.root, fg_color="transparent")
+        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Medicine List tab
-        self.list_tab = tk.Frame(self.notebook)
-        self.notebook.add(self.list_tab, text="Medicine List")
+        # Title header
+        header_frame = ctk.CTkFrame(main_container, corner_radius=15, height=80)
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+        header_frame.pack_propagate(False)
         
-        # Adding or Editing the Medicine tab
-        self.edit_tab = tk.Frame(self.notebook)
-        self.notebook.add(self.edit_tab, text="Add or Edit Medicine")
+        ctk.CTkLabel(header_frame, text="Medicine Database Manager",font=ctk.CTkFont(size=28, weight="bold")).pack(pady=10)
         
-        # Intake schedule managing tab
-        self.schedule_tab = tk.Frame(self.notebook)
-        self.notebook.add(self.schedule_tab, text="Intake Schedule")
+        ctk.CTkLabel(header_frame, text="Organize and manage your medications with ease", font=ctk.CTkFont(size=13), text_color=("gray60", "gray50")).pack()
         
-        # The status bar
-        self.status_bar = tk.Label(self.root, text="Ready", bd=1, relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        # Tabview
+        self.tabview = ctk.CTkTabview(main_container, corner_radius=15)
+        self.tabview.pack(fill=tk.BOTH, expand=True)
+        
+        # Create tabs
+        self.list_tab = self.tabview.add("Medicine List")
+        self.edit_tab = self.tabview.add("Add/Edit Medicine")
+        self.schedule_tab = self.tabview.add("Intake Schedule")
+        
+        # Status bar
+        self.status_bar = ctk.CTkFrame(self.root, height=35, corner_radius=0)
+        self.status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+        
+        self.status_label = ctk.CTkLabel(self.status_bar, text="Ready",font=ctk.CTkFont(size=12), anchor=tk.W)
+        self.status_label.pack(side=tk.LEFT, padx=15, pady=5)
 
     def setup_list_tab(self):
-        # Search frame
-        search_frame = tk.Frame(self.list_tab)
-        search_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Search section
+        search_frame = ctk.CTkFrame(self.list_tab, corner_radius=10)
+        search_frame.pack(fill=tk.X, padx=15, pady=(15, 10))
         
-        tk.Label(search_frame, text="Search:").pack(side=tk.LEFT, padx=5)
-        self.search_entry = tk.Entry(search_frame, width=40)
+        search_inner = ctk.CTkFrame(search_frame, fg_color="transparent")
+        search_inner.pack(fill=tk.X, padx=15, pady=15)
+        
+        ctk.CTkLabel(search_inner, text="Search:", font=ctk.CTkFont(size=14, weight="bold")).pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.search_entry = ctk.CTkEntry(search_inner, width=350, height=35, placeholder_text="Search by name or ingredients...")
         self.search_entry.pack(side=tk.LEFT, padx=5)
         self.search_entry.bind('<KeyRelease>', lambda e: self.search_medicines())
         
-        tk.Button(search_frame, text="Clear", command=self.clear_search).pack(side=tk.LEFT, padx=5)
-        tk.Button(search_frame, text="Refresh", command=self.refresh_medicine_list).pack(side=tk.LEFT, padx=5)
+        ctk.CTkButton(search_inner, text="Clear", width=100, height=35, command=self.clear_search, fg_color=("gray60", "gray40"), hover_color=("gray55", "gray35")).pack(side=tk.LEFT, padx=5)
         
-        # Medicine list frame
-        list_frame = tk.Frame(self.list_tab)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        ctk.CTkButton(search_inner, text="Refresh", width=100, height=35, command=self.refresh_medicine_list).pack(side=tk.LEFT, padx=5)
         
-        # Tree view for medicine list
+        # Medicine list section
+        list_frame = ctk.CTkFrame(self.list_tab, corner_radius=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
+        
+        ctk.CTkLabel(list_frame, text="All Medicines", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 10), padx=15, anchor="w")
+        
+        # Treeview container
+        tree_container = ctk.CTkFrame(list_frame, fg_color=("gray85", "gray20"))
+        tree_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
+        
+        # Scrollbar and Treeview
+        from tkinter import ttk
+        
+        tree_scroll_frame = tk.Frame(tree_container, bg=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"))
+        tree_scroll_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        
         columns = ("ID", "Name", "Dosage", "Form", "Frequency")
-        self.medicine_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=15)
+        self.medicine_tree = ttk.Treeview(tree_scroll_frame, columns=columns, show='headings', height=12)
+        
+        # Configure treeview style
+        style = ttk.Style()
+        style.theme_use('default')
+        style.configure("Treeview", background=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"),foreground=("#000000" if ctk.get_appearance_mode() == "Light" else "#FFFFFF"),fieldbackground=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"),  borderwidth=0, font=("Arial", 11))
+        style.configure("Treeview.Heading",  background=("#1F6AA5"), foreground="white", borderwidth=0, font=("Arial", 11, "bold"))
+        style.map('Treeview', background=[('selected', '#1F6AA5')])
         
         for col in columns:
             self.medicine_tree.heading(col, text=col)
             if col == "ID":
                 self.medicine_tree.column(col, width=50)
             elif col == "Name":
-                self.medicine_tree.column(col, width=200)
+                self.medicine_tree.column(col, width=250)
             else:
                 self.medicine_tree.column(col, width=150)
         
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.medicine_tree.yview)
+        scrollbar = ttk.Scrollbar(tree_scroll_frame, orient=tk.VERTICAL, command=self.medicine_tree.yview)
         self.medicine_tree.configure(yscroll=scrollbar.set)
         
         self.medicine_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -288,121 +299,174 @@ class MedicineDatabaseGUI:
         
         self.medicine_tree.bind('<Double-1>', self.on_medicine_double_click)
         
-        # All the action buttons
-        button_frame = tk.Frame(self.list_tab)
-        button_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Action buttons
+        button_frame = ctk.CTkFrame(list_frame, fg_color="transparent")
+        button_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
         
-        tk.Button(button_frame, text="View Details", command=self.view_medicine_details, bg="#4CAF50", fg="white").pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Edit", command=self.edit_selected_medicine,bg="#2196F3", fg="white").pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Delete", command=self.delete_selected_medicine,bg="#f44336", fg="white").pack(side=tk.LEFT, padx=5)
+        ctk.CTkButton(button_frame, text="View Details", command=self.view_medicine_details, height=35, fg_color=("#2196F3", "#2196F3"), hover_color=("#1E88E5", "#1E88E5")).pack(side=tk.LEFT, padx=5)
         
-        # Displaying the medicine details
-        details_frame = tk.LabelFrame(self.list_tab, text="Medicine Details", padx=10, pady=10)
-        details_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        ctk.CTkButton(button_frame, text="Edit",command=self.edit_selected_medicine, height=35, fg_color=("#2196F3", "#1976D2"), hover_color=("#1E88E5", "#1565C0")).pack(side=tk.LEFT, padx=5)
         
-        from tkinter import scrolledtext
-        self.details_text = scrolledtext.ScrolledText(details_frame, height=8, wrap=tk.WORD)
-        self.details_text.pack(fill=tk.BOTH, expand=True)
-
+        ctk.CTkButton(button_frame, text="Delete", command=self.delete_selected_medicine, height=35, fg_color=("#E63946", "#D62828"), hover_color=("#C92A35", "#B91F26")).pack(side=tk.LEFT, padx=5)
+        
+        # Details section
+        details_frame = ctk.CTkFrame(self.list_tab, corner_radius=10)
+        details_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        
+        ctk.CTkLabel(details_frame, text="Medicine Details", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 10), padx=15, anchor="w")
+        
+        details_container = ctk.CTkFrame(details_frame, fg_color=("gray85", "gray20"))
+        details_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        
+        self.details_text = tk.Text(details_container, height=8, wrap=tk.WORD, bg=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"), fg=("#000000" if ctk.get_appearance_mode() == "Light" else "#FFFFFF"), relief=tk.FLAT, font=("Arial", 11),borderwidth=0, highlightthickness=0)
+        self.details_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
     def setup_edit_tab(self):
-        # Form frame
-        form_frame = tk.Frame(self.edit_tab, padx=20, pady=20)
-        form_frame.pack(fill=tk.BOTH, expand=True)
+        # Scrollable frame for form
+        scrollable_frame = ctk.CTkScrollableFrame(self.edit_tab, fg_color="transparent")
+        scrollable_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        
+        # Form container
+        form_frame = ctk.CTkFrame(scrollable_frame, corner_radius=10)
+        form_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        ctk.CTkLabel(form_frame, text="Medicine Information",font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(20, 15), padx=20, anchor="w")
+        
+        # Inner form
+        inner_form = ctk.CTkFrame(form_frame, fg_color="transparent")
+        inner_form.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
         # Medicine Name
-        tk.Label(form_frame, text="Medicine Name:*", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.name_entry = tk.Entry(form_frame, width=50)
-        self.name_entry.grid(row=0, column=1, pady=5, sticky=tk.W)
+        ctk.CTkLabel(inner_form, text="Medicine Name:*",font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky=tk.W, pady=(10, 5), padx=10)
+        self.name_entry = ctk.CTkEntry(inner_form, width=450, height=35,placeholder_text="Enter medicine name")
+        self.name_entry.grid(row=1, column=0, pady=(0, 15), padx=10, sticky=tk.W)
         
         # Dosage
-        tk.Label(form_frame, text="Dosage:", font=("Arial", 10)).grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.dosage_entry = tk.Entry(form_frame, width=50)
-        self.dosage_entry.grid(row=1, column=1, pady=5, sticky=tk.W)
-        tk.Label(form_frame, text="e.g., 500mg, 10ml", fg="gray").grid(row=1, column=2, sticky=tk.W, padx=5)
+        ctk.CTkLabel(inner_form, text="Dosage:",font=ctk.CTkFont(size=13, weight="bold")).grid(row=2, column=0, sticky=tk.W, pady=(10, 5), padx=10)
+        self.dosage_entry = ctk.CTkEntry(inner_form, width=450, height=35, placeholder_text="e.g., 500mg, 10ml")
+        self.dosage_entry.grid(row=3, column=0, pady=(0, 15), padx=10, sticky=tk.W)
         
-        # Form for tablet, capsule, all that stuff
-        tk.Label(form_frame, text="Form:", font=("Arial", 10)).grid(row=2, column=0, sticky=tk.W, pady=5)
+        # Form
+        ctk.CTkLabel(inner_form, text="Form:",
+                    font=ctk.CTkFont(size=13, weight="bold")).grid(row=4, column=0, sticky=tk.W, pady=(10, 5), padx=10)
         self.form_var = tk.StringVar()
-        form_combo = ttk.Combobox(form_frame, textvariable=self.form_var, width=47,values=["Tablet", "Capsule", "Syrup", "Injection", "Drops", "Cream", "Inhaler", "Other"])
-        form_combo.grid(row=2, column=1, pady=5, sticky=tk.W)
+        self.form_combo = ctk.CTkComboBox(inner_form, width=450, height=35, variable=self.form_var, values=["Tablet", "Capsule", "Syrup", "Injection", "Drops", "Cream", "Inhaler", "Other"])
+        self.form_combo.grid(row=5, column=0, pady=(0, 15), padx=10, sticky=tk.W)
         
         # Frequency
-        tk.Label(form_frame, text="Frequency:", font=("Arial", 10)).grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.frequency_entry = tk.Entry(form_frame, width=50)
-        self.frequency_entry.grid(row=3, column=1, pady=5, sticky=tk.W)
-        tk.Label(form_frame, text="e.g., Once daily, Twice daily, As needed", fg="gray").grid(row=3, column=2, sticky=tk.W, padx=5)
+        ctk.CTkLabel(inner_form, text="Frequency:", font=ctk.CTkFont(size=13, weight="bold")).grid(row=6, column=0, sticky=tk.W, pady=(10, 5), padx=10)
+        self.frequency_entry = ctk.CTkEntry(inner_form, width=450, height=35, placeholder_text="e.g., Once daily, Twice daily, As needed")
+        self.frequency_entry.grid(row=7, column=0, pady=(0, 15), padx=10, sticky=tk.W)
         
         # Active Ingredients
-        tk.Label(form_frame, text="Active Ingredients:", font=("Arial", 10)).grid(row=4, column=0, sticky=tk.W, pady=5)
-        self.ingredients_entry = tk.Entry(form_frame, width=50)
-        self.ingredients_entry.grid(row=4, column=1, pady=5, sticky=tk.W)
-        tk.Label(form_frame, text="For matching OCR text", fg="gray").grid(row=4, column=2, sticky=tk.W, padx=5)
+        ctk.CTkLabel(inner_form, text="Active Ingredients:", font=ctk.CTkFont(size=13, weight="bold")).grid(row=8, column=0, sticky=tk.W, pady=(10, 5), padx=10)
+        self.ingredients_entry = ctk.CTkEntry(inner_form, width=450, height=35, placeholder_text="For matching OCR text")
+        self.ingredients_entry.grid(row=9, column=0, pady=(0, 15), padx=10, sticky=tk.W)
         
         # Notes
-        tk.Label(form_frame, text="Notes:", font=("Arial", 10)).grid(row=5, column=0, sticky=tk.W, pady=5)
-        self.notes_text = scrolledtext.ScrolledText(form_frame, width=38, height=5)
-        self.notes_text.grid(row=5, column=1, pady=5, sticky=tk.W)
+        ctk.CTkLabel(inner_form, text="Notes:",font=ctk.CTkFont(size=13, weight="bold")).grid(row=10, column=0, sticky=tk.W, pady=(10, 5), padx=10)
+        
+        notes_container = ctk.CTkFrame(inner_form, fg_color=("gray85", "gray20"))
+        notes_container.grid(row=11, column=0, pady=(0, 20), padx=10, sticky=tk.W)
+        
+        self.notes_text = tk.Text(notes_container, width=55, height=5, bg=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"), fg=("#000000" if ctk.get_appearance_mode() == "Light" else "#FFFFFF"), relief=tk.FLAT, font=("Arial", 11), borderwidth=0, highlightthickness=0)
+        self.notes_text.pack(padx=2, pady=2)
         
         # Buttons
-        button_frame = tk.Frame(form_frame)
-        button_frame.grid(row=6, column=0, columnspan=3, pady=20)
+        button_frame = ctk.CTkFrame(inner_form, fg_color="transparent")
+        button_frame.grid(row=12, column=0, pady=20, padx=10)
         
-        tk.Button(button_frame, text="Save Medicine", command=self.save_medicine,bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), width=15).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Clear Form", command=self.clear_form,bg="#FF9800", fg="white", font=("Arial", 10), width=15).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Cancel", command=self.cancel_edit,bg="#9E9E9E", fg="white", font=("Arial", 10), width=15).pack(side=tk.LEFT, padx=5)
-    
+        ctk.CTkButton(button_frame, text="Save Medicine", command=self.save_medicine, width=150, height=40, fg_color=("#2CC985", "#2FA572"), hover_color=("#28B075", "#268F63"), font=ctk.CTkFont(size=14, weight="bold")).pack(side=tk.LEFT, padx=5)
+        
+        ctk.CTkButton(button_frame, text="Clear Form", command=self.clear_form, width=150, height=40, fg_color=("#FF9800", "#F57C00"), hover_color=("#FB8C00", "#E65100")).pack(side=tk.LEFT, padx=5)
+        
+        ctk.CTkButton(button_frame, text="Cancel", command=self.cancel_edit, width=150, height=40, fg_color=("gray60", "gray40"), hover_color=("gray55", "gray35")).pack(side=tk.LEFT, padx=5)
 
     def setup_schedule_tab(self):
-        # Medicine selection
-        top_frame = tk.Frame(self.schedule_tab, padx=10, pady=10)
-        top_frame.pack(fill=tk.X)
+        # Medicine selection section
+        top_frame = ctk.CTkFrame(self.schedule_tab, corner_radius=10)
+        top_frame.pack(fill=tk.X, padx=15, pady=15)
         
-        tk.Label(top_frame, text="Select Medicine:", font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=5)
+        top_inner = ctk.CTkFrame(top_frame, fg_color="transparent")
+        top_inner.pack(fill=tk.X, padx=20, pady=20)
+        
+        ctk.CTkLabel(top_inner, text="Select Medicine:", font=ctk.CTkFont(size=14, weight="bold")).pack(side=tk.LEFT, padx=(0, 10))
+        
         self.schedule_medicine_var = tk.StringVar()
-        self.schedule_medicine_combo = ttk.Combobox(top_frame, textvariable=self.schedule_medicine_var, width=40, state='readonly')
+        self.schedule_medicine_combo = ctk.CTkComboBox(top_inner, width=400, height=35,variable=self.schedule_medicine_var,state='readonly', command=self.load_medicine_schedules)
         self.schedule_medicine_combo.pack(side=tk.LEFT, padx=5)
-        self.schedule_medicine_combo.bind('<<ComboboxSelected>>', self.load_medicine_schedules)
         
-        tk.Button(top_frame, text="Refresh List", command=self.refresh_schedule_medicines).pack(side=tk.LEFT, padx=5)
+        ctk.CTkButton(top_inner, text="Refresh List", command=self.refresh_schedule_medicines,height=35).pack(side=tk.LEFT, padx=10)
         
-        # Schedule form frame
-        form_frame = tk.LabelFrame(self.schedule_tab, text="Add Intake Schedule", padx=10, pady=10)
-        form_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Schedule form section
+        form_frame = ctk.CTkFrame(self.schedule_tab, corner_radius=10)
+        form_frame.pack(fill=tk.X, padx=15, pady=(0, 15))
+        
+        ctk.CTkLabel(form_frame, text="Add Intake Schedule",font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20, 15), padx=20, anchor="w")
+        
+        form_inner = ctk.CTkFrame(form_frame, fg_color="transparent")
+        form_inner.pack(fill=tk.X, padx=20, pady=(0, 20))
         
         # Time of day
-        tk.Label(form_frame, text="Time of Day:*").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.time_entry = tk.Entry(form_frame, width=20)
-        self.time_entry.grid(row=0, column=1, pady=5, sticky=tk.W, padx=5)
-        tk.Label(form_frame, text="Format: HH:MM (24-hour)", fg="gray").grid(row=0, column=2, sticky=tk.W)
+        time_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
+        time_frame.pack(fill=tk.X, pady=5)
+        
+        ctk.CTkLabel(time_frame, text="Time of Day:*",font=ctk.CTkFont(size=13, weight="bold"),width=150).pack(side=tk.LEFT, padx=5)
+        
+        self.time_entry = ctk.CTkEntry(time_frame, width=150, height=35, placeholder_text="HH:MM")
+        self.time_entry.pack(side=tk.LEFT, padx=5)
+        
+        ctk.CTkLabel(time_frame, text="(24-hour format)",text_color=("gray60", "gray50")).pack(side=tk.LEFT, padx=5)
         
         # Quick time buttons
-        time_button_frame = tk.Frame(form_frame)
-        time_button_frame.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=5)
-        tk.Button(time_button_frame, text="Morning (08:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "08:00")).pack(side=tk.LEFT, padx=2)
-        tk.Button(time_button_frame, text="Afternoon (14:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "14:00")).pack(side=tk.LEFT, padx=2)
-        tk.Button(time_button_frame, text="Evening (20:00)", command=lambda: self.time_entry.delete(0, tk.END) or self.time_entry.insert(0, "20:00")).pack(side=tk.LEFT, padx=2)
+        time_btn_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
+        time_btn_frame.pack(fill=tk.X, pady=10, padx=(160, 0))
+        
+        ctk.CTkButton(time_btn_frame, text="Morning (08:00)",command=lambda: self.set_time("08:00"), width=140, height=30, fg_color=("gray70", "gray30"), hover_color=("gray65", "gray25")).pack(side=tk.LEFT, padx=3)
+        
+        ctk.CTkButton(time_btn_frame, text="Afternoon (14:00)", command=lambda: self.set_time("14:00"), width=150, height=30, fg_color=("gray70", "gray30"), hover_color=("gray65", "gray25")).pack(side=tk.LEFT, padx=3)
+        
+        ctk.CTkButton(time_btn_frame, text="Evening (20:00)",command=lambda: self.set_time("20:00"), width=140, height=30, fg_color=("gray70", "gray30"), hover_color=("gray65", "gray25")).pack(side=tk.LEFT, padx=3)
         
         # With food
-        tk.Label(form_frame, text="With Food:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        food_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
+        food_frame.pack(fill=tk.X, pady=10)
+        
+        ctk.CTkLabel(food_frame, text="With Food:", font=ctk.CTkFont(size=13, weight="bold"), width=150).pack(side=tk.LEFT, padx=5)
+        
         self.with_food_var = tk.StringVar(value="No preference")
-        with_food_combo = ttk.Combobox(form_frame, textvariable=self.with_food_var, width=18,values=["Before food", "After food", "With food", "No preference"])
-        with_food_combo.grid(row=2, column=1, pady=5, sticky=tk.W, padx=5)
+        with_food_combo = ctk.CTkComboBox(food_frame, width=250, height=35, variable=self.with_food_var,values=["Before food", "After food", "With food", "No preference"])
+        with_food_combo.pack(side=tk.LEFT, padx=5)
         
         # Special instructions
-        tk.Label(form_frame, text="Special Instructions:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.special_instructions_entry = tk.Entry(form_frame, width=50)
-        self.special_instructions_entry.grid(row=3, column=1, columnspan=2, pady=5, sticky=tk.W, padx=5)
+        inst_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
+        inst_frame.pack(fill=tk.X, pady=10)
         
-        tk.Button(form_frame, text="Add Schedule", command=self.add_intake_schedule,bg="#4CAF50", fg="white", font=("Arial", 10, "bold")).grid(row=4, column=1, pady=10, sticky=tk.W, padx=5)
+        ctk.CTkLabel(inst_frame, text="Instructions:",font=ctk.CTkFont(size=13, weight="bold"),width=150).pack(side=tk.LEFT, padx=5)
         
-        # Schedule list frame
-        list_frame = tk.LabelFrame(self.schedule_tab, text="Current Schedules", padx=10, pady=10)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.special_instructions_entry = ctk.CTkEntry(inst_frame, width=450, height=35, placeholder_text="Any special instructions")
+        self.special_instructions_entry.pack(side=tk.LEFT, padx=5)
         
-        # Treeview for schedules
+        # Add button
+        ctk.CTkButton(form_inner, text="Add Schedule", command=self.add_intake_schedule, width=200, height=40,fg_color=("#2CC985", "#2FA572"), hover_color=("#28B075", "#268F63"), font=ctk.CTkFont(size=14, weight="bold")).pack(pady=15)
+        
+        # Schedule list section
+        list_frame = ctk.CTkFrame(self.schedule_tab, corner_radius=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
+        
+        ctk.CTkLabel(list_frame, text="Current Schedules", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(20, 10), padx=20, anchor="w")
+        
+        # Treeview container
+        tree_container = ctk.CTkFrame(list_frame, fg_color=("gray85", "gray20"))
+        tree_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 15))
+        
+        from tkinter import ttk
+        
+        tree_scroll_frame = tk.Frame(tree_container, bg=("#F0F0F0" if ctk.get_appearance_mode() == "Light" else "#2B2B2B"))
+        tree_scroll_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        
         columns = ("ID", "Medicine", "Time", "With Food", "Instructions")
-        self.schedule_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
+        self.schedule_tree = ttk.Treeview(tree_scroll_frame, columns=columns, show='headings', height=10)
         
         self.schedule_tree.heading("ID", text="ID")
         self.schedule_tree.heading("Medicine", text="Medicine")
@@ -414,19 +478,27 @@ class MedicineDatabaseGUI:
         self.schedule_tree.column("Medicine", width=200)
         self.schedule_tree.column("Time", width=100)
         self.schedule_tree.column("With Food", width=120)
-        self.schedule_tree.column("Instructions", width=300)
+        self.schedule_tree.column("Instructions", width=350)
         
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.schedule_tree.yview)
+        scrollbar = ttk.Scrollbar(tree_scroll_frame, orient=tk.VERTICAL, command=self.schedule_tree.yview)
         self.schedule_tree.configure(yscroll=scrollbar.set)
         
         self.schedule_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Delete schedule button
-        tk.Button(list_frame, text="Delete Selected Schedule", command=self.delete_selected_schedule,bg="#f44336", fg="white").pack(pady=5)
+        # Deleting button
+        ctk.CTkButton(list_frame, text="Delete Selected Schedule",
+                     command=self.delete_selected_schedule,
+                     height=35,
+                     fg_color=("#E63946", "#D62828"),
+                     hover_color=("#C92A35", "#B91F26")).pack(pady=(0, 20))
     
-    #Buttons functionalities
-
+    # button functions
+    
+    def set_time(self, time_str):
+        self.time_entry.delete(0, tk.END)
+        self.time_entry.insert(0, time_str)
+    
     def clear_search(self):
         self.search_entry.delete(0, tk.END)
         self.refresh_medicine_list()
@@ -434,7 +506,6 @@ class MedicineDatabaseGUI:
     def on_medicine_double_click(self, event):
         self.view_medicine_details()
 
-    #searching medicine
     def search_medicines(self):
         search_term = self.search_entry.get()
         
@@ -449,9 +520,8 @@ class MedicineDatabaseGUI:
         for med in medicines:
             self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
         
-        self.status_bar.config(text=f"Found {len(medicines)} matching medicines")
+        self.status_label.configure(text=f"🔍 Found {len(medicines)} matching medicines")
 
-    # Deleting 
     def delete_selected_medicine(self):
         selection = self.medicine_tree.selection()
         if not selection:
@@ -462,14 +532,13 @@ class MedicineDatabaseGUI:
         medicine_id = item['values'][0]
         medicine_name = item['values'][1]
         
-        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{medicine_name}'?\n\nThis will also delete all associated schedules.")
+        confirm = messagebox.askyesno("Confirm Delete",  f"Are you sure you want to delete '{medicine_name}'?\n\nThis will also delete all associated schedules.")
         
         if confirm:
             self.db.delete_medicine(medicine_id)
             self.refresh_medicine_list()
-            self.status_bar.config(text=f"Deleted: {medicine_name}")
+            self.status_label.configure(text=f"🗑️ Deleted: {medicine_name}")
 
-    #viewing details logic
     def view_medicine_details(self):
         selection = self.medicine_tree.selection()
         if not selection:
@@ -482,7 +551,7 @@ class MedicineDatabaseGUI:
         medicine = self.db.get_medicine_by_id(medicine_id)
         schedules = self.db.get_schedules_for_medicine(medicine_id)
         
-        details = f"Medicine Details\n{'='*60}\n\n"
+        details = f"MEDICINE DETAILS\n{'='*70}\n\n"
         details += f"Name: {medicine[1]}\n"
         details += f"Dosage: {medicine[2]}\n"
         details += f"Form: {medicine[3]}\n"
@@ -490,7 +559,7 @@ class MedicineDatabaseGUI:
         details += f"Active Ingredients: {medicine[6]}\n"
         details += f"Notes: {medicine[5]}\n\n"
         
-        details += f"Intake Schedule\n{'-'*60}\n"
+        details += f"INTAKE SCHEDULE\n{'-'*70}\n"
         if schedules:
             for schedule in schedules:
                 details += f"• {schedule[2]} - {schedule[3]} - {schedule[4]}\n"
@@ -508,9 +577,8 @@ class MedicineDatabaseGUI:
         for med in medicines:
             self.medicine_tree.insert('', tk.END, values=(med[0], med[1], med[2], med[3], med[4]))
         
-        self.status_bar.config(text=f"Loaded {len(medicines)} medicines")
+        self.status_label.configure(text=f"✓ Loaded {len(medicines)} medicines")
 
-    # -- saving medicine
     def save_medicine(self):
         name = self.name_entry.get().strip()
         
@@ -525,22 +593,18 @@ class MedicineDatabaseGUI:
         notes = self.notes_text.get('1.0', tk.END).strip()
         
         if self.current_medicine_id:
-            # Update existing medicine
             self.db.update_medicine(self.current_medicine_id, name, dosage, form, frequency, notes, ingredients)
             messagebox.showinfo("Success", f"Medicine '{name}' updated successfully!")
-            self.status_bar.config(text=f"Updated: {name}")
+            self.status_label.configure(text=f"✓ Updated: {name}")
         else:
-            # Add new medicine
             medicine_id = self.db.add_medicine(name, dosage, form, frequency, notes, ingredients)
             messagebox.showinfo("Success", f"Medicine '{name}' added successfully!\nID: {medicine_id}")
-            self.status_bar.config(text=f"Added: {name}")
+            self.status_label.configure(text=f"✓ Added: {name}")
         
         self.clear_form()
         self.refresh_medicine_list()
-        self.notebook.select(self.list_tab)
+        self.tabview.set("Medicine List")
 
-
-    #editing selected medicine
     def edit_selected_medicine(self):
         selection = self.medicine_tree.selection()
         if not selection:
@@ -570,8 +634,8 @@ class MedicineDatabaseGUI:
         self.notes_text.delete('1.0', tk.END)
         self.notes_text.insert('1.0', medicine[5])
         
-        self.notebook.select(self.edit_tab)
-        self.status_bar.config(text=f"Editing: {medicine[1]}")
+        self.tabview.set("Add/Edit Medicine")
+        self.status_label.configure(text=f"Editing: {medicine[1]}")
 
     def clear_form(self):
         self.current_medicine_id = None
@@ -581,19 +645,20 @@ class MedicineDatabaseGUI:
         self.frequency_entry.delete(0, tk.END)
         self.ingredients_entry.delete(0, tk.END)
         self.notes_text.delete('1.0', tk.END)
-        self.status_bar.config(text="Form cleared")
+        self.status_label.configure(text="🔄 Form cleared")
 
     def cancel_edit(self):
         self.clear_form()
-        self.notebook.select(self.list_tab)
+        self.tabview.set("Medicine List")
 
-
-    #---schedule tab
+    # schedule tab function
 
     def refresh_schedule_medicines(self):
         medicines = self.db.get_all_medicines()
         medicine_list = [f"{med[0]} - {med[1]}" for med in medicines]
-        self.schedule_medicine_combo['values'] = medicine_list
+        self.schedule_medicine_combo.configure(values=medicine_list)
+        if medicine_list:
+            self.schedule_medicine_combo.set(medicine_list[0])
         self.load_all_schedules()
 
     def load_medicine_schedules(self, event=None):
@@ -608,11 +673,11 @@ class MedicineDatabaseGUI:
             schedules = self.db.get_schedules_for_medicine(med[0])
             for schedule in schedules:
                 self.schedule_tree.insert('', tk.END, values=(
-                    schedule[0],  # ID
-                    med[1],  # Medicine name
-                    schedule[2], # Time of medicine
-                    schedule[3],  # With food
-                    schedule[4]   # Instructions 
+                    schedule[0],
+                    med[1],
+                    schedule[2],
+                    schedule[3],
+                    schedule[4]
                 ))
     
     def add_intake_schedule(self):
@@ -628,7 +693,6 @@ class MedicineDatabaseGUI:
             messagebox.showerror("Validation Error", "Time is required!")
             return
         
-        # Validate time format
         try:
             datetime.strptime(time_of_day, "%H:%M")
         except ValueError:
@@ -641,12 +705,11 @@ class MedicineDatabaseGUI:
         self.db.add_schedule(medicine_id, time_of_day, with_food, instructions)
         messagebox.showinfo("Success", f"Schedule added for {time_of_day}")
         
-        # Clear form
         self.time_entry.delete(0, tk.END)
         self.special_instructions_entry.delete(0, tk.END)
         
         self.load_all_schedules()
-        self.status_bar.config(text="Schedule added successfully")
+        self.status_label.configure(text="✓ Schedule added successfully")
 
     def delete_selected_schedule(self):
         selection = self.schedule_tree.selection()
@@ -661,9 +724,10 @@ class MedicineDatabaseGUI:
         if confirm:
             self.db.delete_schedule(schedule_id)
             self.load_all_schedules()
-            self.status_bar.config(text="Schedule deleted")
+            self.status_label.configure(text="Schedule deleted")
+
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    root = ctk.CTk()
     app = MedicineDatabaseGUI(root)
     root.mainloop()
