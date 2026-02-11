@@ -391,6 +391,8 @@ class VisionAssistantGUI:
         ctk.CTkButton(actions_frame, text="Test OCR (Full Frame)",command=self.test_ocr_full_frame,height=35,corner_radius=8,font=ctk.CTkFont(size=13)).pack(fill=tk.X, padx=15, pady=(0, 5))
         ctk.CTkButton(actions_frame, text="Capture Image",command=self.capture_image,height=35,corner_radius=8,font=ctk.CTkFont(size=13)).pack(fill=tk.X, padx=15, pady=(0, 5))
         ctk.CTkButton(actions_frame, text="Verify Medicine",command=self.verify_medicine,height=35,corner_radius=8,font=ctk.CTkFont(size=13, weight="bold")).pack(fill=tk.X, padx=15, pady=(0, 15))
+
+        ctk.CTkButton(actions_frame, text="Manage Medicine Database",command=self.open_database_manager,height=40,corner_radius=8,font=ctk.CTkFont(size=13, weight="bold"),fg_color=("#E55C2E"),hover_color=("#E55C2E")).pack(fill=tk.X, padx=15, pady=(0, 15))
                 
         # Detected Objects List
         objects_frame = ctk.CTkFrame(scrollable_frame, corner_radius=10)
@@ -482,6 +484,27 @@ class VisionAssistantGUI:
         # Automatically loging the default model
         if self.default_model_path:
             self.load_model_from_path(self.default_model_path)
+
+    # opening database manager
+    def open_database_manager(self):
+        try:
+            # Import the Database GUI module
+            from Database import MedicineDatabaseGUI
+            
+            # Creating a new window
+            db_window = ctk.CTkToplevel(self.root)
+            db_window.title("Medicine Database Manager")
+            db_window.geometry("1200x800")
+            
+            # Initializing the database GUI in the new window
+            db_app = MedicineDatabaseGUI(db_window)
+            
+            self.log_command("Opened Medicine Database Manager")
+            speak("Opening medicine database manager")
+            
+        except Exception as e:
+            self.log_command(f"Error opening database manager: {e}")
+            speak("Error opening database manager")
         
     def load_model(self):
         model_path = filedialog.askopenfilename(title="Select YOLO Model",filetypes=[("PyTorch Model", "*.pt"), ("All Files", "*.*")])
