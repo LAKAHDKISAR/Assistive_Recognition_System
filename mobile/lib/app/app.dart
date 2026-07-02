@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart'; // widgets packages
-import 'package:mobile/features/home/presentation/home_page.dart'; //home page 
+import 'package:mobile/app/router/app_router.dart'; //app router
 
 
 
@@ -8,10 +8,10 @@ class App extends StatelessWidget {  // app class that extends stateless widget 
 
   @override
   Widget build(BuildContext context) { //build method that called when need to display anything on screen.
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Assistive Recognition System',
       debugShowCheckedModeBanner: false,  // the default debug banner on top right removed
-      home: const HomePage(), // first screen to show when app start,
+      routerConfig: appRouter, // router to app router which will handle showing different pages of app,
     );
   }
 }
