@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart'; // widgets packages
 import 'package:mobile/app/router/app_router.dart'; //app router
+import 'package:mobile/app/theme/app_theme.dart'; // theme
 
 
 
@@ -11,6 +12,7 @@ class App extends StatelessWidget {  // app class that extends stateless widget 
     return MaterialApp.router(
       title: 'Assistive Recognition System',
       debugShowCheckedModeBanner: false,  // the default debug banner on top right removed
+      theme: AppTheme.light, // theme
       routerConfig: appRouter, // router to app router which will handle showing different pages of app,
     );
   }
